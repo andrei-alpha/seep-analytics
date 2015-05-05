@@ -98,7 +98,7 @@ def updateClusterData(dataset, json):
 
         dataset[FAIRNESS]['data'][index][label + '-max'] = max(dataset[FAIRNESS]['data'][index][label + '-max'], float(json[label]))
         dataset[FAIRNESS]['data'][index][label + '-min'] = min(dataset[FAIRNESS]['data'][index][label + '-min'], float(json[label]))
-        dataset[FAIRNESS]['data'][index][label + '-fairness'] = dataset[FAIRNESS]['data'][index][label + '-max'] / dataset[FAIRNESS]['data'][index][label + '-min']
+        dataset[FAIRNESS]['data'][index][label + '-fairness'] = dataset[FAIRNESS]['data'][index][label + '-max'] / max(0.01, dataset[FAIRNESS]['data'][index][label + '-min'])
 
       return dataset
   # Don't append old data
