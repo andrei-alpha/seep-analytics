@@ -98,6 +98,17 @@ function shallowPopulateGraphs(id, labels, data) {
     label = chartData.labels[i];
     lineChart.addData([value], label);
   }
+  
+  var needsUpdate = false;
+  for (var i = 0; i < chartData.datasets[0].data.length; ++i) {
+    if (chartData.datasets[0].data[i] != lineChart.datasets[0].points[i].value) {
+      lineChart.datasets[0].points[i].value = chartData.datasets[0].data[i];
+      needsUpdate = true;
+    }
+  }
+
+  if (needsUpdate == true)
+    lineChart.update()
 }
 
 function getDataset() {
