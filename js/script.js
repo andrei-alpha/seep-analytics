@@ -7,7 +7,9 @@ var dataFilters = {
   'mean rate': [20, 2],
   'default': [10, 1] 
 }
-var graphTitles = ['1-minute rate', '5-minute rate', '15-minute rate', 'mean rate'];
+var graphTitles = ['1-minute rate', '5-minute rate', '15-minute rate', 'mean rate',
+  '1-minute rate-avg', '5-minute rate-avg', '15-minute rate-avg', 'mean rate-avg',
+  '1-minute rate-fairness', '5-minute rate-fairness', '15-minute rate-fairness', 'mean rate-fairness'];
 var lineChartIds = {}
 
 function dataSelect(dataset, filter) {
@@ -186,7 +188,7 @@ function updateGraphs(dataset, graphType) {
         graphName += String(appName) + '<img style="margin-left: 15px;" width="18px" src="static/css/loading.gif"></img>';
     }
     else
-      graphName = '<b>' + key + '</b> Cluster';
+      graphName = 'Wombat Cluster <b>' + key + '</b>';
 
     var doShallowPopulate = true;
     if (!shallowUpdate || $('#' + ids[0]).length == 0) {

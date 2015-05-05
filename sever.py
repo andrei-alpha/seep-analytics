@@ -69,18 +69,64 @@ def updateAppData(dataset, json):
   return dataset[-LAST_DATAPOINTS:]
 
 def updateClusterData(dataset, json):
-  for event in dataset:
+  GENERAL = 'Total'
+  AVERAGE = 'Average'
+  FAIRNESS = 'Fairness'
+
+  if not dataset:
+    dataset[GENERAL] = {}
+    dataset[GENERAL]['data'] = []
+    dataset[AVERAGE] = {}
+    dataset[AVERAGE]['data'] = []
+    dataset[FAIRNESS] = {}
+    dataset[FAIRNESS]['data'] = []
+
+  dataset[GENERAL]['metric'] = EVENTS_PER_SECOND
+  dataset[AVERAGE]['metric'] = EVENTS_PER_SECOND
+  dataset[FAIRNESS]['metric'] = EVENTS_PER_SECOND
+
+  for index, event in enumerate(dataset[GENERAL]['data']):
     if abs(int(event['time']) - int(json['time'])) < 30:
       for label in event:
+        # Update special labels when updating normal ones
         if label == 'time':
           continue
         event[label] += json[label]
+        
+        dataset[AVERAGE]['data'][index][label + '-cnt'] += 1
+        dataset[AVERAGE]['data'][index][label + '-avg'] = float(event[label]) / dataset[AVERAGE]['data'][index][label + '-cnt']
+
+        dataset[FAIRNESS]['data'][index][label + '-max'] = max(dataset[FAIRNESS]['data'][index][label + '-max'], float(json[label]))
+        dataset[FAIRNESS]['data'][index][label + '-min'] = min(dataset[FAIRNESS]['data'][index][label + '-min'], float(json[label]))
+        dataset[FAIRNESS]['data'][index][label + '-fairness'] = dataset[FAIRNESS]['data'][index][label + '-max'] / dataset[FAIRNESS]['data'][index][label + '-min']
+
       return dataset
   # Don't append old data
-  if len(dataset) and int(dataset[-1]['time']) > int(json['time']):
+  if len(dataset[GENERAL]['data']) and int(dataset[GENERAL]['data'][-1]['time']) > int(json['time']):
     return dataset
-  dataset.append(copy.deepcopy(json)) 
-  return dataset[-LAST_DATAPOINTS:]
+
+  average_json = {}
+  fairness_json = {}
+  for label in json:
+    if label == 'time':
+      average_json[label] = int(json[label])
+      fairness_json[label] = int(json[label])
+      continue
+    average_json[label + '-cnt'] = 1
+    average_json[label + '-avg'] = float(json[label])
+
+    fairness_json[label + '-max'] = float(json[label])
+    fairness_json[label + '-min'] = float(json[label])
+    fairness_json[label + '-fairness'] = 1.0
+
+  dataset[GENERAL]['data'].append(copy.deepcopy(json))
+  dataset[AVERAGE]['data'].append(average_json)
+  dataset[FAIRNESS]['data'].append(fairness_json)
+
+  dataset[GENERAL]['data'] = dataset[GENERAL]['data'][-LAST_DATAPOINTS:]
+  dataset[AVERAGE]['data'] = dataset[AVERAGE]['data'][-LAST_DATAPOINTS:]
+  dataset[FAIRNESS]['data'] = dataset[FAIRNESS]['data'][-LAST_DATAPOINTS:]
+  return dataset
 
 def getQueryFileName(data):
   match = re.search('(?<=query.file\s=\s).*jar', data)
@@ -89,10 +135,9 @@ def getQueryFileName(data):
   return None
 
 def update(appId, contId, data):
-  clusterId = 'wombat'
-  if not clusterId in dataset['cluster']:
-    dataset['cluster'][clusterId] = {}
-    dataset['cluster'][clusterId]['data'] = []
+  #if not clusterId in dataset['cluster']:
+  #  dataset['cluster'][clusterId] = {}
+  #  dataset['cluster'][clusterId]['data'] = []
   if not appId in dataset['apps']:
     dataset['apps'][appId] = {}
     dataset['apps'][appId]['data'] = []
@@ -129,8 +174,7 @@ def update(appId, contId, data):
     dataset['apps'][appId]['metric'] = EVENTS_PER_SECOND
 
     # Add event to cluster dataset
-    dataset['cluster'][clusterId]['data'] = updateClusterData(dataset['cluster'][clusterId]['data'], json)
-    dataset['cluster'][clusterId]['metric'] = EVENTS_PER_SECOND
+    dataset['cluster'] = updateClusterData(dataset['cluster'], json)
 
   # Get container type
   ctype = re.search('(?<=Configuring local task:\s)[A-Za-z]+(?=@)', data)
