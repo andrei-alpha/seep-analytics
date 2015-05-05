@@ -1,10 +1,11 @@
 import os
+import re
 import sys
 import requests
 import time
 
 index = {}
-skip_patterns = ['Sender', 'RecordBatch', 'KafkaProducer', 'RecordAccumulator']
+skip_patterns = ['DEBUG', 'TRACE']
 
 def send(payload):
   success = False
@@ -30,6 +31,11 @@ def update(host, prefix, path):
     with open(path, 'r') as fin:
       fin.read(index[path])
       data = fin.read()
+
+      filteredData = data
+      for pattern in skip_patterns:
+        filteredData = re.sub('[0-9]+:[0-9][^\n=]*' + pattern + '[^\n]*\n', '', filteredData)
+      data = filteredData
 
       #print 'new data:', path, len(data)
       while len(data):

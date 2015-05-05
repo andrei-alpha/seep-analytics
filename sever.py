@@ -109,7 +109,7 @@ def update(appId, contId, data):
   matches = filter(lambda x: 'Meters' in strs[x], xrange(len(strs)))
   for match in matches:
     report = strs[match-2:][:10]
-    
+
     try:
       json = convert(report)
     except:
