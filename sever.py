@@ -1,5 +1,6 @@
 import sys
 import re
+import os
 import bottle
 import copy
 import datetime
@@ -8,6 +9,10 @@ import json
 import time
 
 from bottle import Bottle, response, request, run, template, static_file
+
+import bottle
+
+bottle.BaseRequest.MEMFILE_MAX = 1024 * 1024 
 
 EVENTS_PER_SECOND = 'events per second'
 
@@ -176,11 +181,16 @@ def event():
   if event == 'new line':
     if not path in files:
       #print 'add:', path
-      files[path] = ''
-      urls[path] = ''
+      if not os.path.exists(os.path.dirname(path[1:])):
+        os.makedirs(os.path.dirname(path[1:]))
 
-    files[path] += data
-    urls[path] += data
+      files[path] = 'text/plain'
+      urls[path] = 'text/plain'
+      with open(path[1:], "w") as fout:
+        fout.write('')
+
+    with open(path[1:], "a") as fout:
+      fout.write(data)
     update(appId, containerId, data)
 
 @app.route('/backend/dataset')
@@ -202,9 +212,7 @@ def logs(url):
      url = url[:-1]
   url = '/' + url
   if url in urls and isinstance(urls[url], str):
-    response.content_type = "text/plain; charset=UTF8"
-    return urls[url]
-    #return template('file.html', content=urls[url])
+    return static_file(url[1:], root='', mimetype='text/plain')
   elif url in urls and isinstance(urls[url], list):
     return format_links(urls[url])
   return "No logs data found"

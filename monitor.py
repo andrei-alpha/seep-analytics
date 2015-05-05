@@ -33,7 +33,7 @@ def update(host, prefix, path):
 
       #print 'new data:', path, len(data)
       while len(data):
-        batch = data[:50000]
+        batch = data[:500000]
         data = data[len(batch):]
         payload = {'event': 'new line', 'path': path[len(prefix):], 'data': batch}
         send(payload)

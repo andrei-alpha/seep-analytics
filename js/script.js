@@ -68,7 +68,7 @@ function getChartData(dataset, labelsData) {
 function populateGraph(id, labels, data) {
   var container = $('#' + id).get()[0].getContext("2d");
   var chartData = getChartData(data, labels)
-  var lineChart = new Chart(container).Line(chartData);
+  var lineChart = new Chart(container).Line(chartData, {scaleBeginAtZero: true});
   lineChartIds[id] = lineChart;
 }
 
@@ -84,14 +84,6 @@ function shallowPopulateGraphs(id, labels, data) {
     (lineChart.datasets[0].points.length > 1 && lineChart.datasets[0].points[1].label != chartData.labels[1])) {
     lineChart.removeData();
   }
-  
-  /*try {
-    console.log("update:", lineChart.datasets[0].points[ lineChart.datasets[0].points.length - 1].value);
-    console.log("with: ", chartData.datasets[0].data[ chartData.datasets[0].data.length - 1]);
-    console.log("update:", lineChart.datasets[0].points[ lineChart.datasets[0].points.length - 1].label);
-    console.log("with: ", chartData.labels[ chartData.labels.length - 1])
-  } catch(err) {}
-  */
 
   for (var i = lineChart.datasets[0].points.length; i < chartData.datasets[0].data.length; ++i) {
     value = chartData.datasets[0].data[i];
@@ -143,6 +135,10 @@ function updateGraphs(dataset, graphType) {
     var item = dataset[key]
     var type = item['type'];
     var metric = item['metric']
+
+    // Don't show source since everthing is 0
+    if (type == 'Source')
+      continue;
 
     var labels = []
     var data = {}
