@@ -32,7 +32,7 @@ def format_links(links):
 def convert(event):
   data = {}
 
-  utc_date = datetime.datetime.strptime(event[0].replace('=', '').strip(), "%m/%d/%y %H:%M:%S %p")
+  utc_date = datetime.datetime.strptime(event[0].replace('=', '').strip(), "%m/%d/%y %I:%M:%S %p")
   # TODO: One by off error related to timezones when converting in javascript (temp fix)
   timestamp = (utc_date - datetime.datetime(1970,1,1)).total_seconds() - 3600
 
