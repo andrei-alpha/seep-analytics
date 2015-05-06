@@ -1,16 +1,15 @@
-import sys
-import re
-import os
 import bottle
 import copy
 import datetime
 import json
-
+import os
+import re
+import sys
 import time
+import threading
+import admin
 
 from bottle import Bottle, response, request, run, template, static_file
-
-import bottle
 
 bottle.BaseRequest.MEMFILE_MAX = 1024 * 1024 
 
@@ -26,6 +25,12 @@ dataset['apps'] = {}
 dataset['cluster'] = {}
 
 LAST_DATAPOINTS = 40
+GENERAL = 'Total'
+AVERAGE = 'Average'
+FAIRNESS = 'Fairness'
+UPDATE_SEEP = 'update_seep'
+UPDATE_ANALYTICS = 'update_analytics'
+KILL_ALL_SEEP = 'kill_all_seep'
 
 def format_links(links):
   html = '<table>'
@@ -69,10 +74,6 @@ def updateAppData(dataset, json):
   return dataset[-LAST_DATAPOINTS:]
 
 def updateClusterData(dataset, json):
-  GENERAL = 'Total'
-  AVERAGE = 'Average'
-  FAIRNESS = 'Fairness'
-
   if not dataset:
     dataset[GENERAL] = {}
     dataset[GENERAL]['data'] = []
@@ -197,7 +198,7 @@ def getContainerId(path):
   idx3 = path[idx1:][:idx2].find('_')
   return path[idx1:][:idx2][idx3+1:]
 
-@app.route('/event', method="post")
+@app.route('/event', method='post')
 def event():
   event = request.forms.get('event')
   path = request.forms.get('path')
@@ -253,6 +254,17 @@ def index():
 @app.route('/static/<filepath:path>')
 def server_static(filepath):
     return static_file(filepath, root='')
+
+@app.route('/command/<command>', method='post')
+def server_command(command):
+  t = threading.Thread(target=admin.killAllSeepQueries)
+  t.deamon = True
+  t.start()
+  return admin.status()
+
+@app.route('/command/status')
+def server_command_status():
+  return admin.status()
 
 @app.route("/<url:re:.+>")
 def logs(url):

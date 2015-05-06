@@ -221,18 +221,29 @@ $(function() {
 })
 
 function openClusterView() {
+  $('#admin-console').css("display", "none");
+  $('#graphs').css("display", "block");
   currentView = 'cluster';
   updateGraphs(globalDataset[currentView], currentView);
 }
 
 function openAppsView() {
+  $('#admin-console').css("display", "none");
+  $('#graphs').css("display", "block");
   currentView = 'apps';
   updateGraphs(globalDataset[currentView], currentView);
 }
 
 function openContainersView() {
+  $('#admin-console').css("display", "none");
+  $('#graphs').css("display", "block");
   currentView = 'conts';
   updateGraphs(globalDataset[currentView], currentView);
+}
+
+function openAdminView() {
+  $('#graphs').css("display", "none");
+  $('#admin-console').css("display", "block");
 }
 
 //first, checks if it isn't implemented yet

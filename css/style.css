@@ -9,3 +9,7 @@ body {
 .graph {
 	margin: 10px;
 }
+
+#admin-console {
+	display: none;
+}
