@@ -150,6 +150,15 @@ def update(appId, contId, data):
   if queryFile:
     dataset['apps'][appId]['query'] = queryFile
 
+  # Get container type
+  ctype = re.search('(?<=Configuring local task:\s)[A-Za-z]+(?=@)', data)
+
+  # Skip Source containers updates
+  if ctype and ctype.group() == 'Source':
+    return
+  if ctype:
+    dataset['conts'][contId]['type'] = ctype.group()
+
   strs = data.split('\n')
   matches = filter(lambda x: 'Meters' in strs[x], xrange(len(strs)))
   for match in matches:
@@ -175,11 +184,6 @@ def update(appId, contId, data):
 
     # Add event to cluster dataset
     dataset['cluster'] = updateClusterData(dataset['cluster'], json)
-
-  # Get container type
-  ctype = re.search('(?<=Configuring local task:\s)[A-Za-z]+(?=@)', data)
-  if ctype:
-    dataset['conts'][contId]['type'] = ctype.group()
 
 def getAppId(path):
   idx1 = path.find('application')
