@@ -20,14 +20,23 @@ def sendCommand(host, command, cwd='.'):
     if not host:
         for host in hosts:
             try:
-                requests.post(host + '/command', data={'command': command, 'cwd': cwd})
+                requests.post(host + '/command', data={'command': command, 'cwd': cwd}).text
             except requests.ConnectionError:
                 print 'Failed for host:', host
     else:
         try:
-            return requests.post(host + '/command', data={'command': command, 'cwd': cwd})
+            return requests.post(host + '/command', data={'command': command, 'cwd': cwd}).text
         except requests.ConnectionError:
             print 'Failed for host:', host
+
+def getStatus(host, readAll = False):
+    out = requests.get(host + '/status').text
+    while readAll:
+        res = requests.get(host + '/status').text
+        if not res:
+            break
+        out += res
+    return out
 
 def getAvailableOptions():
     options = {}
@@ -52,8 +61,9 @@ def killAllSeepQueries():
     # Count number of running seep queries
     total = 0
     for host in hosts:
-        res = sendCommand(host, 'jps')
-        total += len(re.findall('(?<=\s)Main(?=\n)', res.text))
+        sendCommand(host, 'jps')
+        res = getStatus(host, True)
+        total += len(re.findall('(?<=\s)Main(?=\n)', res))
 
     running = total
     count = 3
@@ -61,8 +71,10 @@ def killAllSeepQueries():
         running = 0
         for host in hosts:
             sendCommand(host, 'bash ' + seep_root + '/deploy/killall.sh')
-            res = sendCommand(host, 'jps')
-            running += len(re.findall('(?<=\s)Main(?=\n)', res.text))
+            getStatus(host, True)
+            sendCommand(host, 'jps')
+            res = getStatus(True)
+            running += len(re.findall('(?<=\s)Main(?=\n)', res))
         count -= 1
         time.sleep(0.5)
         adminProgress = max(adminProgress, int(max(0, (1.0 - float(running) / float(total))) * 100.0))
@@ -74,24 +86,60 @@ def updateAnalytics(branch):
     global adminCurrentTask, adminProgress
     adminProgress = 0
 
+    steps = 2
     adminCurrentTask = 'Fetching origin...'
     for host in hosts:
         sendCommand(host, 'git fetch --all', analytics_root)
-        adminProgress += (1.0 / (2.0 * len(hosts))) * 100
+        getStatus(host, True)
+        adminProgress += (1.0 / (steps * len(hosts))) * 100
     
     # TODO find a way to update worker as well
     adminCurrentTask = 'Applying changes...'
     for host in hosts:
         sendCommand(host, 'git reset --hard origin/' + branch, analytics_root)
-        adminProgress += (1.0 / (2.0 * len(hosts))) * 100
+        adminProgress += (1.0 / (steps * len(hosts))) * 100
 
-    adminCurrentTask = 'Applying changes - Done'
+    adminCurrentTask = 'Updating Analytics - Done'
     adminProgress = 100
 
-def unblockingRead(proc, retVal=''): 
-  while (select.select([proc.stdout],[],[],0)[0]!=[]):   
-    retVal+=proc.stdout.read(1)
-  return retVal
+def updateSeep(branch):
+    global adminCurrentTask, adminProgress
+    adminProgress = 0
+
+    steps = 9
+    adminCurrentTask = 'Fetching origin...'
+    for host in hosts:
+        sendCommand(host, 'git fetch --all', seep_root)
+        getStatus(host, True)
+        adminProgress += (1.0 / (steps * len(hosts))) * 100
+    adminCurrentTask = 'Applying changes...'
+    for host in hosts:
+        sendCommand(host, 'git reset --hard origin/' + branch, seep_root)
+        getStatus(host, True)
+        adminProgress += (1.0 / (steps * len(hosts))) * 100
+    adminCurrentTask = 'Compiling examples...'
+    for host in hosts:
+        sendCommand(host, 'bash sync.sh', seep_root + '/deploy')
+    for host in hosts:
+        getStatus(host, True)
+        adminProgress += (3.0 / (steps * len(hosts))) * 100
+    adminCurrentTask = 'Compiling seep...'
+    for host in hosts:
+        sendCommand(host, './gradlew installApp', seep_root)
+    for host in hosts:
+        getStatus(host, True)
+        adminProgress += (4.0 / (steps * len(hosts))) * 100
+
+    adminCurrentTask = 'Updating Seep - Done'
+    adminProgress = 100
+
+def unblockingRead(proc, retVal=''):
+    if proc.poll():
+        while (select.select([proc.stdout],[],[],0)[0]!=[]):
+            retVal+=proc.stdout.read(1)
+        return retVal
+    else:
+        return proc.communicate()[0]
 
 def submitQuery(queryName, deploymentSize):
     global adminCurrentTask, adminProgress
@@ -107,9 +155,8 @@ def submitQuery(queryName, deploymentSize):
         baseYarnMasterPort += 5
         process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerPort), str(baseYarnMasterPort)], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while steps < 5 * (i + 1):
-            if not process.poll():
-                out = unblockingRead(process)
-                steps += len(re.findall('SeepYarnAppSubmissionClient', out))
+            out = unblockingRead(process)
+            steps += len(re.findall('SeepYarnAppSubmissionClient', out))
             adminProgress = int(float(steps) / float(totalSteps) * 100.0)
 
     adminCurrentTask = 'Deploy seep queries...'

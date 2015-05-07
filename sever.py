@@ -260,7 +260,7 @@ def server_command(command):
   if command == KILL_ALL_SEEP:
     t = threading.Thread(target=admin.killAllSeepQueries)
   elif command == UPDATE_SEEP:
-    return 'TO DO'
+    t = threading.Thread(target=admin.updateSeep, args=(data['branch'],))
   elif command == UPDATE_ANALYTICS:
     t = threading.Thread(target=admin.updateAnalytics, args=(data['branch'],))
   elif command == SUBMIT_QUERY:

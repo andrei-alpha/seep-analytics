@@ -52,7 +52,8 @@ function killAllSeepQueries() {
 }
 
 function updateSEEP() {
-	sendCommand('update_seep', {});
+  var data = {'branch': $("#seep-branches option:selected").text()}
+	sendCommand('update_seep', data);
 }
 
 function updateAnalytics() {

@@ -11,6 +11,7 @@ from bottle import Bottle, response, request
 
 app = Bottle()
 globalMonitor = None
+globalProcess = None
 
 class Monitor:
   def __init__(self, argvs):
@@ -100,13 +101,30 @@ if __name__ == '__main__':
 @app.route('/command', method='post')
 def server_command():
   command = request.forms.get('command').split(' ')
+  cwd = request.forms.get('cwd')
   if command == ['reset']:
     global globalMonitor
     globalMonitor.stop()
     startMonitorThread()
   else:
+    global globalProcess
     print 'run', command
-    return subprocess.check_output(command)
+    globalProcess = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #return subprocess.check_output(command, cwd=cwd)
+
+@app.route('/status', method='get')
+def server_status():
+  global globalProcess
+  if not globalProcess:
+    return None
+  if globalProcess.poll():
+    while (select.select([globalProcess.stdout],[],[],0)[0]!=[]):
+      retVal+=globalProcess.stdout.read(1)
+    return retVal
+  else:
+    out = globalProcess.communicate()[0]
+    globalProcess = None
+    return out
 
 app.run(host=gethostname(), port=7008, reloader=False)
 globalMonitor.stop()
