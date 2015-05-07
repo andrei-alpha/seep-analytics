@@ -9,11 +9,10 @@ import time
 import threading
 import admin
 
+from socket import gethostname
 from bottle import Bottle, response, request, run, template, static_file
 
-bottle.BaseRequest.MEMFILE_MAX = 1024 * 1024 
-
-EVENTS_PER_SECOND = 'events per second'
+bottle.BaseRequest.MEMFILE_MAX = 1024 * 1024
 
 app = Bottle()
 
@@ -24,10 +23,12 @@ dataset['conts'] = {}
 dataset['apps'] = {}
 dataset['cluster'] = {}
 
+EVENTS_PER_SECOND = 'events per second'
 LAST_DATAPOINTS = 40
 GENERAL = 'Total'
 AVERAGE = 'Average'
 FAIRNESS = 'Fairness'
+SUBMIT_QUERY = 'submit_query'
 UPDATE_SEEP = 'update_seep'
 UPDATE_ANALYTICS = 'update_analytics'
 KILL_ALL_SEEP = 'kill_all_seep'
@@ -136,9 +137,6 @@ def getQueryFileName(data):
   return None
 
 def update(appId, contId, data):
-  #if not clusterId in dataset['cluster']:
-  #  dataset['cluster'][clusterId] = {}
-  #  dataset['cluster'][clusterId]['data'] = []
   if not appId in dataset['apps']:
     dataset['apps'][appId] = {}
     dataset['apps'][appId]['data'] = []
@@ -257,10 +255,21 @@ def server_static(filepath):
 
 @app.route('/command/<command>', method='post')
 def server_command(command):
-  t = threading.Thread(target=admin.killAllSeepQueries)
+  data = dict(request.forms)
+  admin.reset()
+  if command == KILL_ALL_SEEP:
+    t = threading.Thread(target=admin.killAllSeepQueries)
+  elif command == UPDATE_SEEP:
+    return 'TO DO'
+  elif command == UPDATE_ANALYTICS:
+    return 'TO DO'
+  elif command == SUBMIT_QUERY:
+    t = threading.Thread(target=admin.submitQuery, args=(data['queryName'], int(data['deploymentSize'])))
+  else:
+    return json.dumps(admin.getAvailableQueries())
   t.deamon = True
   t.start()
-  return admin.status()
+  return 'ok'
 
 @app.route('/command/status')
 def server_command_status():
@@ -277,4 +286,5 @@ def logs(url):
     return format_links(urls[url])
   return "No logs data found"
 
-app.run(host='localhost', port=7007, reloader=True)
+admin.sendCommand(None, 'reset')
+app.run(host=gethostname(), port=7007, reloader=True)

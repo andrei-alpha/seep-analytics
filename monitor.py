@@ -1,66 +1,112 @@
 import os
 import re
 import sys
+import subprocess
 import requests
 import time
+import threading
 
-index = {}
-skip_patterns = ['DEBUG', 'TRACE']
+from socket import gethostname
+from bottle import Bottle, response, request
 
-def send(payload):
-  success = False
-  pause = 4
-  while not success:
-    try:
-      requests.post(host + '/event', data=payload)
-      success = True
-    except requests.ConnectionError:
-      print 'Connection problems. Retrying in', pause, ' sec..'
-      time.sleep(pause)
-      pause *= 2
+app = Bottle()
+globalMonitor = None
 
-def update(host, prefix, path):
-  if path not in index:
-    #print 'created:', path
-    payload = {'event': 'created', 'path': path[len(prefix):], 'data': ''}
-    send(payload)
-    index[path] = 0
+class Monitor:
+  def __init__(self, argvs):
+    usage = 'We want as arguments: 1) host 2) port 3) absolute path to logs directory'
+    if len(argvs) != 4 or not os.path.exists(argvs[3]):
+      print usage
+      return
 
-  size = os.path.getsize(path)
-  if size > index[path]:
-    with open(path, 'r') as fin:
-      fin.read(index[path])
-      data = fin.read()
+    self.host = 'http://' + argvs[1] + ':' + argvs[2]
+    self.path = argvs[3]
+    self.prefix = self.path[:self.path.find('/logs')]  
 
-      filteredData = data
-      for pattern in skip_patterns:
-        filteredData = re.sub('[0-9]+:[0-9][^\n=]*' + pattern + '[^\n]*\n', '', filteredData)
-      data = filteredData
+    self.index = {}
+    self.skip_patterns = ['DEBUG', 'TRACE']
 
-      #print 'new data:', path, len(data)
-      while len(data):
-        batch = data[:500000]
-        data = data[len(batch):]
-        payload = {'event': 'new line', 'path': path[len(prefix):], 'data': batch}
-        send(payload)
+  def send(self, payload):
+    success = False
+    pause = 1
+    while not success and self.working:
+      try:
+        requests.post(self.host + '/event', data=payload)
+        success = True
+      except requests.ConnectionError:
+        print 'Connection problems. Retrying in', pause, ' sec..'
+        self.sleep(pause)
+        pause *= 2
 
-    index[path] = size
+  def update(self, path):
+    if path not in self.index:
+      #print 'created:', path
+      payload = {'event': 'created', 'path': path[len(self.prefix):], 'data': ''}
+      self.send(payload)
+      self.index[path] = 0
 
-def scan(host, prefix, path):
-  for root, dirs, files in os.walk(path):
-    for file in files:
-      update(host, prefix, root + '/' + file)
+    size = os.path.getsize(path)
+    if size > self.index[path]:
+      with open(path, 'r') as fin:
+        fin.read(self.index[path])
+        data = fin.read()
 
+        filteredData = data
+        for pattern in self.skip_patterns:
+          filteredData = re.sub('[0-9]+:[0-9][^\n=]*' + pattern + '[^\n]*\n', '', filteredData)
+        data = filteredData
+
+        #print 'new data:', path, len(data)
+        while len(data) and self.working:
+          batch = data[:500000]
+          data = data[len(batch):]
+          payload = {'event': 'new line', 'path': path[len(self.prefix):], 'data': batch}
+          self.send(payload)
+
+      self.index[path] = size
+
+  def scan(self):
+    for root, dirs, files in os.walk(self.path):
+      for file in files:
+        self.update(root + '/' + file)
+
+  def run(self):
+    self.working = True
+    while self.working:
+      self.scan()
+      self.sleep(30)
+
+  def stop(self):
+    print 'Stoping monitor thread...'
+    self.working = False
+
+  def sleep(self, seconds):
+    cnt = 0
+    while self.working and cnt < seconds:
+      time.sleep(1)
+      cnt += 1
+
+def startMonitorThread():
+  global globalMonitor
+  globalMonitor = Monitor(sys.argv)
+  t = threading.Thread(target=globalMonitor.run)
+  t.deamon = True
+  t.start()
+
+# Main entry point
 if __name__ == '__main__':
-  usage = 'We want as arguments: 1) host 2) port 3) absolute path to logs directory'
-  if len(sys.argv) != 4 or not os.path.exists(sys.argv[3]):
-    print usage
-    exit(0)    
+  startMonitorThread()
 
-  host = 'http://' + sys.argv[1] + ':' + sys.argv[2]
-  path = sys.argv[3]
-  prefix = path[:path.find('/logs')]  
+@app.route('/command', method='post')
+def server_command():
+  command = request.forms.get('command').split(' ')
+  if command == ['reset']:
+    global globalMonitor
+    globalMonitor.stop()
+    startMonitorThread()
+  else:
+    print 'run', command
+    return subprocess.check_output(command)
 
-  while True:
-    scan(host, prefix, path)
-    time.sleep(30)
+app.run(host=gethostname(), port=7008, reloader=False)
+globalMonitor.stop()

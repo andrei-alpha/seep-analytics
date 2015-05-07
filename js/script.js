@@ -244,6 +244,7 @@ function openContainersView() {
 function openAdminView() {
   $('#graphs').css("display", "none");
   $('#admin-console').css("display", "block");
+  getAvailableQueries();
 }
 
 //first, checks if it isn't implemented yet

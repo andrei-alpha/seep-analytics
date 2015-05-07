@@ -29,7 +29,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" onclick="openAdminView()">SEEP cluster</a>
+          <a href="#" class="navbar-brand" onclick="openAdminView()">SEEP cluster</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -49,49 +49,70 @@
       </div>
       <table id="graphs"><tbody></tbody></table>
 
-      <div id="admin-console" class="row">
-        <div class="col-sm-6 col-md-4">
-          <div class="thumbnail">
-            <img src="static/imgs/hadoop.png" width="135">
-            <div class="caption">
-              <h3>Hadoop YARN</h3>
-              <p>Shortcut to main YARN components such as: <p>1) Resouce Manager to view all running applications and where they are allocated</p><p>2) Namenode to see cluster storage, availability and replication.</p></p>
-              <p>
-                <a href="http://wombat01.doc.res.ic.ac.uk:8088/" class="btn btn-primary" role="button">Resource Manager</a>
-                <a href="http://wombat01.doc.res.ic.ac.uk:50070/" class="btn btn-success" role="button">Namenode Manager</a>
-              </p>
+      <div id="admin-console">
+        <div class="row">
+          <div class="col-sm-6 col-md-4">
+            <div class="thumbnail">
+              <img src="static/imgs/hadoop.png" width="135">
+              <div class="caption">
+                <h3>Hadoop YARN</h3>
+                <p>Shortcut to main YARN components such as: <p>1) Resouce Manager to view all running applications and where they are allocated</p><p>2) Namenode to see cluster storage, availability and replication.</p></p>
+                <p>
+                  <a href="http://wombat01.doc.res.ic.ac.uk:8088/" class="btn btn-primary" role="button">Resource Manager</a>
+                  <a href="http://wombat01.doc.res.ic.ac.uk:50070/" class="btn btn-success" role="button">Namenode Manager</a>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-7 col-md-4">
+            <div class="thumbnail">
+              <img src="static/imgs/seep.png" width="250">
+              <div class="caption">
+                <br>
+                <h3>SEEP</h3>
+                <p>Real-Time Data Processing Framework. Available actions: <p>1) Deploy new query to cluster</p><p>2) Open Web-UI</p><p>3) Stop all running queries.</p></p>
+                <select id="available-queries" class="selectpicker"></select>
+                <select id="deployment-size" class="selectpicker">
+                  <option>1</option>
+                  <option>2</option>
+                  <option>3</option>
+                  <option>4</option>
+                  <option>5</option>
+                  <option>6</option>
+                  <option>7</option>
+                  <option>8</option>
+                </select>
+                <p>
+                  <a onclick="submitSeepQuery()" class="btn btn-success" role="button">New Query</a>
+                  <a href="http://wombat01.doc.res.ic.ac.uk:8080" class="btn btn-primary" role="button">Web UI</a>
+                  <a onclick="killAllSeepQueries()" class="btn btn-danger" role="button">Stop all queries</a>
+                </p>
+
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-7 col-md-4">
+            <div class="thumbnail">
+              <img src="static/imgs/git.png" width="265">
+              <div class="caption">
+                <h3>Admin Console</h3>
+                <p>Administration console. Available actions: <p>1) Update SEEP version and re-compile the system cluster wide</p><p>2) Update analytics version and restart system cluster wide.</p></p>
+                <p>
+                  <a onclick="updateSEEP()" class="btn btn-primary" role="button">Update SEEP</a>
+                  <a onclick="updateAnalytics()" class="btn btn-primary" role="button">Update Analytics</a>
+                </p>
+              </div>
             </div>
           </div>
         </div>
-        <div class="col-sm-7 col-md-4">
-          <div class="thumbnail">
-            <img src="static/imgs/seep.png" width="250">
-            <div class="caption">
-              <br><br><br>
-              <h3>SEEP</h3>
-              <p>Real-Time Data Processing Framework. Available actions: <p>1) Deploy new query to cluster</p><p>2) Open Web-UI</p><p>3) Stop all running queries.</p></p>
-              <p>
-                <a onclick="submitSeepQuery()" class="btn btn-success" role="button">New Query</a>
-                <a href="http://wombat01.doc.res.ic.ac.uk:8080" class="btn btn-primary" role="button">Web UI</a>
-                <a onclick="killAllSeepQueries()" class="btn btn-danger" role="button">Stop all queries</a>
-              </p>
-            </div>
+
+        <div id="progress" class="progress">
+          <h4 id="progress-label" class="progress-label">Java</h4>
+          <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="min-width: 2em;">
+            0%
           </div>
         </div>
-        <div class="col-sm-7 col-md-4">
-          <div class="thumbnail">
-            <img src="static/imgs/git.png" width="265">
-            <div class="caption">
-              <h3>Administration</h3>
-              <p>Administration console. Available actions: <p>1) Update SEEP version and re-compile the system cluster wide</p><p>2) Update analytics version and restart system cluster wide.</p></p>
-              <p>
-                <a onclick="updateSEEP()" class="btn btn-primary" role="button">Update SEEP</a>
-                <a onclick="updateAnalytics()" class="btn btn-primary" role="button">Update Analytics</a>
-              </p>
-            </div>
-          </div>
-        </div>
-      <div>
+      </div>
     </div>
 
     <!-- Graph row template -->
