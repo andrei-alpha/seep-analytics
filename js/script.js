@@ -109,7 +109,7 @@ function getDataset() {
   $.ajax({
     url: "/backend/dataset",
     type: "get",
-      success: function(response){
+    success: function(response){
       console.log(response)
       globalDataset = response;
       updateGraphs(globalDataset[currentView], currentView);
@@ -244,7 +244,7 @@ function openContainersView() {
 function openAdminView() {
   $('#graphs').css("display", "none");
   $('#admin-console').css("display", "block");
-  getAvailableQueries();
+  getAvailableOptions();
 }
 
 //first, checks if it isn't implemented yet

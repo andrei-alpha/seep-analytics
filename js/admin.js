@@ -56,17 +56,21 @@ function updateSEEP() {
 }
 
 function updateAnalytics() {
-	sendCommand('update_analytics')
+  var data = {'branch': $("#analytics-branches option:selected").text()}
+	sendCommand('update_analytics', data)
 }
 
-function getAvailableQueries() {
+function getAvailableOptions() {
 	$.ajax({
 		dataType: "json",
-    url: "/command/get_queries",
+    url: "/command/get_options",
     type: "post",
     success: function(response) {
-    	for (var i = 0; i < response.length; ++i)
-    		$('#available-queries').append('<option class="option">' + response[i] + '</option>')
+    	for (key in response) {
+        for (var i = 0; i < response[key].length; ++i) {
+    		  $('#' + key).append('<option class="option">' + response[key][i] + '</option>')
+        }
+      }
     }
   });
 }

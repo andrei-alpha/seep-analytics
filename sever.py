@@ -262,11 +262,11 @@ def server_command(command):
   elif command == UPDATE_SEEP:
     return 'TO DO'
   elif command == UPDATE_ANALYTICS:
-    return 'TO DO'
+    t = threading.Thread(target=admin.updateAnalytics, args=(data['branch'],))
   elif command == SUBMIT_QUERY:
     t = threading.Thread(target=admin.submitQuery, args=(data['queryName'], int(data['deploymentSize'])))
   else:
-    return json.dumps(admin.getAvailableQueries())
+    return json.dumps(admin.getAvailableOptions())
   t.deamon = True
   t.start()
   return 'ok'

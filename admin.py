@@ -10,30 +10,40 @@ adminCurrentTask = ''
 adminProgress = 0
 
 seep_root = '/Users/andrei/Code/SEEPng'
+analytics_root = '/Users/andrei/Code/watcher'
 baseYarnWorkerPort = 4500
 baseYarnMasterPort = 6000
 hosts_names = ['andrei-mbp']
 hosts = map(lambda x: 'http://' + x + ':7008', hosts_names)
 
-def sendCommand(host, command):
+def sendCommand(host, command, cwd='.'):
     if not host:
         for host in hosts:
             try:
-                requests.post(host + '/command', data={'command': command})
+                requests.post(host + '/command', data={'command': command, 'cwd': cwd})
             except requests.ConnectionError:
                 print 'Failed for host:', host
     else:
         try:
-            return requests.post(host + '/command', data={'command': command})
+            return requests.post(host + '/command', data={'command': command, 'cwd': cwd})
         except requests.ConnectionError:
             print 'Failed for host:', host
 
-def getAvailableQueries():
+def getAvailableOptions():
+    options = {}
     out = subprocess.check_output(['ls', seep_root + '/deploy']).split('\n')
     out = filter(lambda x: '.jar' in x, out)
     out = map(lambda x: re.sub('/.*/', '', x), out)
-    return filter(lambda x: 'seep-master' not in x and 'seep-worker' not in x, out)
-
+    out = filter(lambda x: 'seep-master' not in x and 'seep-worker' not in x, out)
+    options['available-queries'] = out
+    out = subprocess.check_output(['git', 'branch'], cwd=analytics_root).split('\n')
+    out = map(lambda x: re.sub('[^a-zA-z-_]', '', x), out)[:-1]
+    options['analytics-branches'] = out
+    out = subprocess.check_output(['git', 'branch'], cwd=seep_root).split('\n')
+    out = map(lambda x: re.sub('[^a-zA-z-_]', '', x), out)[:-1]
+    options['seep-branches'] = out
+    return options
+ 
 def killAllSeepQueries():
     global adminCurrentTask, adminProgress
     adminCurrentTask = 'Stopping all seep queries...'
@@ -58,6 +68,24 @@ def killAllSeepQueries():
         adminProgress = max(adminProgress, int(max(0, (1.0 - float(running) / float(total))) * 100.0))
 
     adminCurrentTask = 'Stopping all seep queries - Done'
+    adminProgress = 100
+
+def updateAnalytics(branch):
+    global adminCurrentTask, adminProgress
+    adminProgress = 0
+
+    adminCurrentTask = 'Fetching origin...'
+    for host in hosts:
+        sendCommand(host, 'git fetch --all', analytics_root)
+        adminProgress += (1.0 / (2.0 * len(hosts))) * 100
+    
+    # TODO find a way to update worker as well
+    adminCurrentTask = 'Applying changes...'
+    for host in hosts:
+        sendCommand(host, 'git reset --hard origin/' + branch, analytics_root)
+        adminProgress += (1.0 / (2.0 * len(hosts))) * 100
+
+    adminCurrentTask = 'Applying changes - Done'
     adminProgress = 100
 
 def unblockingRead(proc, retVal=''): 
@@ -92,4 +120,4 @@ def reset():
     adminProgress = 0
 
 def status():
-    return {'current': adminCurrentTask, 'progress': adminProgress}
+    return {'current': adminCurrentTask, 'progress': int(adminProgress)}

@@ -72,9 +72,9 @@ class Monitor:
 
   def run(self):
     self.working = True
-    while self.working:
-      self.scan()
-      self.sleep(30)
+    #while self.working:
+    #  self.scan()
+    #  self.sleep(30)
 
   def stop(self):
     print 'Stoping monitor thread...'
