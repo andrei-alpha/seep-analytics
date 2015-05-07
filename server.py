@@ -33,6 +33,23 @@ UPDATE_SEEP = 'update_seep'
 UPDATE_ANALYTICS = 'update_analytics'
 KILL_ALL_SEEP = 'kill_all_seep'
 
+if __name__ == '__main__':
+  usage = ("We want as arguments:\n 1) hosts file (required)\n 2) SEEP root "
+           "directory (required)\n 3) Analytics directory (default is current "
+           "directory)\n 4) Base seep-master port (default is 4500)\n 5) Base "
+           "seep-worker port (default is 6000)")
+  
+  if len(sys.argv) < 3 or not os.path.exists(sys.argv[1]) or not os.path.exists(sys.argv[2]) or (len(sys.argv) >= 4 and not os.path.exists(sys.argv[3])):  
+    print usage
+    exit(0)
+
+  admin.hosts_names = map(lambda x: x.strip(), open(sys.argv[1], 'r').read().split('\n'))
+  admin.hosts = map(lambda x: 'http://' + x + ':7008', filter(lambda x: len(x) > 4, admin.hosts_names))
+  admin.seep_root = os.path.abspath(sys.argv[2])
+  admin.analytics_root = os.path.abspath(sys.argv[3] if len(sys.argv) >= 4 else '.')
+  admin.baseYarnMasterPort = (int(sys.argv[4]) if len(sys.argv) >= 5 else admin.baseYarnMasterPort)
+  admin.baseYarnWorkerPort = (int(sys.argv[5]) if len(sys.argv) >= 6 else admin.baseYarnWorkerPort)
+
 def format_links(links):
   html = '<table>'
   for link in links:
