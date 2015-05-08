@@ -7,7 +7,7 @@
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
     <meta name="description" content="">
     <meta name="author" content="">
-    <link rel="icon" href="favicon.ico">
+    <link rel="icon" href="static/imgs/logo.ico">
 
     <title>Wombat Clutser Analytics</title>
 
@@ -29,16 +29,16 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a href="#" class="navbar-brand" onclick="openAdminView()">SEEP cluster</a>
+          <a href="#" class="navbar-brand" onclick="openAdminView('admin')">SEEP Admin Panel</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="#" onclick="openClusterView()">Analytics</a></li>
-            <li><a href="#" onclick="openAppsView()">Applications</a></li>
-            <li><a href="#" onclick="openContainersView()">Containers</a></li>
+            <li><a href="#" onclick="openView('cluster')">Cluster</a></li>
+            <li><a href="#" onclick="openView('apps')">Applications</a></li>
+            <li><a href="#" onclick="openView('containers')">Containers</a></li>
             <li><a href="/logs">Logs</a></li>
           </ul>
-        </div><!--/.nav-collapse -->
+        </div>
       </div>
     </nav>
 

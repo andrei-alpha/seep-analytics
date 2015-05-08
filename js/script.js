@@ -1,5 +1,5 @@
 var globalDataset;
-var currentView = 'apps', previousView = '';
+var currentView = window.location.pathname, previousView = '';
 var dataFilters = {
   '1-minute rate': [10, 1],
   '5-minute rate': [20, 2],
@@ -110,9 +110,9 @@ function getDataset() {
     url: "/backend/dataset",
     type: "get",
     success: function(response){
-      console.log(response)
       globalDataset = response;
-      updateGraphs(globalDataset[currentView], currentView);
+      openView(currentView);
+      //updateGraphs(globalDataset[currentView], currentView);
     },
   });
 }
@@ -178,7 +178,7 @@ function updateGraphs(dataset, graphType) {
     }
 
     var graphName;
-    if (graphType == 'conts')
+    if (graphType == 'containers')
       graphName = '<b>' + type + '</b>' +  ' for app: ' + item['app'];
     else if(graphType == 'apps') {
       appName = parseInt(key.split("_")[1]);
@@ -220,7 +220,24 @@ $(function() {
   }, 10000);
 })
 
+function openView(view) {
+  console.log(view);
+
+  if (view.contains('containers'))
+    openContainersView();
+  else if(view.contains('apps'))
+    openAppsView();
+  else if(view.contains('cluster'))
+    openClusterView();
+  else if(view.contains('admin'))
+    openAdminView();
+  else // Default view is apps
+    openAppsView();
+}
+
 function openClusterView() {
+  window.history.pushState({}, "", "/cluster");
+
   $('#admin-console').css("display", "none");
   $('#graphs').css("display", "block");
   currentView = 'cluster';
@@ -228,6 +245,8 @@ function openClusterView() {
 }
 
 function openAppsView() {
+  window.history.pushState({}, "", "/apps");
+
   $('#admin-console').css("display", "none");
   $('#graphs').css("display", "block");
   currentView = 'apps';
@@ -235,13 +254,17 @@ function openAppsView() {
 }
 
 function openContainersView() {
+  window.history.pushState({}, "", "/containers");
+
   $('#admin-console').css("display", "none");
   $('#graphs').css("display", "block");
-  currentView = 'conts';
+  currentView = 'containers';
   updateGraphs(globalDataset[currentView], currentView);
 }
 
 function openAdminView() {
+  window.history.pushState({}, "", "/admin");
+
   $('#graphs').css("display", "none");
   $('#admin-console').css("display", "block");
   getAvailableOptions();
@@ -257,5 +280,11 @@ if (!String.prototype.format) {
         : match
       ;
     });
+  };
+}
+
+if (!String.prototype.contains) {
+  String.prototype.contains = function(it) { 
+    return this.indexOf(it) != -1; 
   };
 }

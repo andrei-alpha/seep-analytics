@@ -19,7 +19,7 @@ app = Bottle()
 files = {}
 urls = {}
 dataset = {}
-dataset['conts'] = {}
+dataset['containers'] = {}
 dataset['apps'] = {}
 dataset['cluster'] = {}
 
@@ -157,10 +157,10 @@ def update(appId, contId, data):
   if not appId in dataset['apps']:
     dataset['apps'][appId] = {}
     dataset['apps'][appId]['data'] = []
-  if not contId in dataset['conts']:
-    dataset['conts'][contId] = {}
-    dataset['conts'][contId]['data'] = []
-    dataset['conts'][contId]['app'] = appId
+  if not contId in dataset['containers']:
+    dataset['containers'][contId] = {}
+    dataset['containers'][contId]['data'] = []
+    dataset['containers'][contId]['app'] = appId
 
   queryFile = getQueryFileName(data)
   if queryFile:
@@ -173,7 +173,7 @@ def update(appId, contId, data):
   if ctype and ctype.group() == 'Source':
     return
   if ctype:
-    dataset['conts'][contId]['type'] = ctype.group()
+    dataset['containers'][contId]['type'] = ctype.group()
 
   strs = data.split('\n')
   matches = filter(lambda x: 'Meters' in strs[x], xrange(len(strs)))
@@ -191,8 +191,8 @@ def update(appId, contId, data):
     #print ''
 
     # Add event to containers dataset
-    dataset['conts'][contId]['data'] = updateContainerData(dataset['conts'][contId]['data'], json)
-    dataset['conts'][contId]['metric'] = EVENTS_PER_SECOND
+    dataset['containers'][contId]['data'] = updateContainerData(dataset['containers'][contId]['data'], json)
+    dataset['containers'][contId]['metric'] = EVENTS_PER_SECOND
 
     # Add event to apps dataset
     dataset['apps'][appId]['data'] = updateAppData(dataset['apps'][appId]['data'], json)
@@ -263,6 +263,10 @@ def getDataset():
   return json.dumps(dataset)
 
 @app.route('/')
+@app.route('/containers')
+@app.route('/apps')
+@app.route('/cluster')
+@app.route('/admin')
 def index():
   return static_file('index.html', root='')
 
