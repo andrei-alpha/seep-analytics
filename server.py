@@ -169,11 +169,11 @@ def update(appId, contId, data):
   # Get container type
   ctype = re.search('(?<=Configuring local task:\s)[A-Za-z]+(?=@)', data)
 
-  # Skip Source containers updates
-  if ctype and ctype.group() == 'Source':
-    return
   if ctype:
     dataset['containers'][contId]['type'] = ctype.group()
+  # Skip Source containers updates
+  if 'type' in  dataset['containers'][contId] and dataset['containers'][contId]['type'] == 'Source':
+    return
 
   strs = data.split('\n')
   matches = filter(lambda x: 'Meters' in strs[x], xrange(len(strs)))

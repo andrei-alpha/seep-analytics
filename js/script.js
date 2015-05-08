@@ -3,8 +3,14 @@ var currentView = window.location.pathname, previousView = '';
 var dataFilters = {
   '1-minute rate': [10, 1],
   '5-minute rate': [20, 2],
+  '5-minute rate-fairness': [20, 2],
+  '5-minute rate-avg': [20, 2],
   '15-minute rate': [40, 4],
+  '15-minute rate-fairness': [40, 4],
+  '15-minute rate-avg': [40, 4],
   'mean rate': [20, 2],
+  'mean rate-fairness': [20, 2],
+  'mean rate-avg': [20, 2],
   'default': [10, 1] 
 }
 var graphTitles = ['1-minute rate', '5-minute rate', '15-minute rate', 'mean rate',

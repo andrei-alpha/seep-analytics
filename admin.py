@@ -40,7 +40,7 @@ def getProgress():
     if Globals.allocatedPercentage:
         now = time.time()
         res = int(Globals.baseProgress + min(1.0, float(now - Globals.startTimestamp) / Globals.expectedTime) * Globals.allocatedPercentage)
-        print 'computeProgress:', Globals.adminProgress, ' simulatedProgress:', res, 'Globals.expectedTime:', Globals.expectedTime, 'elapsedTime:', int(now - Globals.startTimestamp)
+        print 'progress:', Globals.adminProgress, ' simulatedProgress:', res, 'expectedTime:', Globals.expectedTime, 'elapsedTime:', int(now - Globals.startTimestamp)
         return int(Globals.baseProgress + min(1.0, float(now - Globals.startTimestamp) / Globals.expectedTime) * Globals.allocatedPercentage)
     return Globals.adminProgress
 
