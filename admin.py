@@ -6,8 +6,21 @@ import select
 import subprocess
 import time
 
-adminCurrentTask = ''
-adminProgress = 0
+class Globals:
+    startTimestamp = None
+    adminCurrentTask = ''
+    adminProgress = 0
+    expectedTime = None
+    baseProgress = None
+    allocatedPercentage = None
+    timeEstimations = {
+        'Stopping all seep queries...': 2,
+        'Fetching origin...': 1,
+        'Applying changes...': 1,
+        'Compiling seep...': 6,
+        'Compiling examples...': 7,
+        'default': 5
+    }
 
 # Need to be given as sys argument
 seep_root = None
@@ -17,7 +30,36 @@ hosts = None
 
 baseYarnWorkerPort = 4500
 baseYarnMasterPort = 6000
-#hosts = map(lambda x: 'http://' + x + ':7008', hosts_names)
+
+def updateProgress(val, resetVal=False):
+    if resetVal:
+        Globals.adminProgress = val
+    Globals.adminProgress = max(Globals.adminProgress, min(val, 100))
+
+def getProgress():
+    if Globals.allocatedPercentage:
+        now = time.time()
+        res = int(Globals.baseProgress + min(1.0, float(now - Globals.startTimestamp) / Globals.expectedTime) * Globals.allocatedPercentage)
+        print 'computeProgress:', Globals.adminProgress, ' simulatedProgress:', res, 'Globals.expectedTime:', Globals.expectedTime, 'elapsedTime:', int(now - Globals.startTimestamp)
+        return int(Globals.baseProgress + min(1.0, float(now - Globals.startTimestamp) / Globals.expectedTime) * Globals.allocatedPercentage)
+    return Globals.adminProgress
+
+def updateTask(task, taskAllocatedPercentage = None):
+    now = time.time()
+    if Globals.startTimestamp and Globals.adminCurrentTask:
+        print Globals.adminCurrentTask, 'took', (now - Globals.startTimestamp), 'seconds'
+        # Update time estimations if required
+        if Globals.adminCurrentTask in Globals.timeEstimations:
+            Globals.timeEstimations[Globals.adminCurrentTask] = int(now - Globals.startTimestamp)
+    if taskAllocatedPercentage:
+        Globals.allocatedPercentage = taskAllocatedPercentage
+        Globals.baseProgress = Globals.adminProgress
+        Globals.expectedTime = Globals.timeEstimations[task] if task in Globals.timeEstimations else Globals.timeEstimations['default']
+        Globals.startTimestamp = now
+    else:
+        Globals.allocatedPercentage = None
+
+    Globals.adminCurrentTask = task
 
 def sendCommand(host, command, cwd='.'):
     if not host:
@@ -57,9 +99,8 @@ def getAvailableOptions():
     return options
  
 def killAllSeepQueries():
-    global adminCurrentTask, adminProgress
-    adminCurrentTask = 'Stopping all seep queries...'
-    adminProgress = 0
+    updateProgress(0, True)
+    updateTask('Stopping all seep queries...', 100)
 
     # Count number of running seep queries
     total = 0
@@ -80,61 +121,59 @@ def killAllSeepQueries():
             running += len(re.findall('(?<=\s)Main(?=\n)', res))
         count -= 1
         time.sleep(0.5)
-        adminProgress = max(adminProgress, int(max(0, (1.0 - float(running) / float(total))) * 100.0))
+        updateProgress((1.0 - float(running) / float(total)) * 100.0)
 
-    adminCurrentTask = 'Stopping all seep queries - Done'
-    adminProgress = 100
+    updateTask('Stopping all seep queries - Done')
+    updateProgress(100)
 
 def updateAnalytics(branch):
-    global adminCurrentTask, adminProgress
-    adminProgress = 0
+    updateProgress(0, True)
+    updateTask('Fetching origin...', 50)
 
     steps = 2
-    adminCurrentTask = 'Fetching origin...'
     for host in hosts:
         sendCommand(host, 'git fetch --all', analytics_root)
         getStatus(host, True)
-        adminProgress += (1.0 / (steps * len(hosts))) * 100
+        updateProgress(Globals.adminProgress + (1.0 / (steps * len(hosts))) * 100)
     
     # TODO find a way to update worker as well
-    adminCurrentTask = 'Applying changes...'
+    updateTask('Applying changes...', 50)
     for host in hosts:
         sendCommand(host, 'git reset --hard origin/' + branch, analytics_root)
-        adminProgress += (1.0 / (steps * len(hosts))) * 100
+        updateProgress(Globals.adminProgress + (1.0 / (steps * len(hosts))) * 100)
 
-    adminCurrentTask = 'Updating Analytics - Done'
-    adminProgress = 100
+    updateTask('Updating Analytics - Done')
+    updateProgress(100)
 
 def updateSeep(branch):
-    global adminCurrentTask, adminProgress
-    adminProgress = 0
+    updateProgress(0, True)
 
     steps = 9
-    adminCurrentTask = 'Fetching origin...'
+    updateTask('Fetching origin...', 10)
     for host in hosts:
         sendCommand(host, 'git fetch --all', seep_root)
         getStatus(host, True)
-        adminProgress += (1.0 / (steps * len(hosts))) * 100
-    adminCurrentTask = 'Applying changes...'
+        updateProgress(Globals.adminProgress + (1.0 / (steps * len(hosts))) * 100)
+    updateTask('Applying changes...', 10)
     for host in hosts:
         sendCommand(host, 'git reset --hard origin/' + branch, seep_root)
         getStatus(host, True)
-        adminProgress += (1.0 / (steps * len(hosts))) * 100
-    adminCurrentTask = 'Compiling examples...'
+        updateProgress(Globals.adminProgress + (1.0 / (steps * len(hosts))) * 100)
+    updateTask('Compiling examples...', 40)
     for host in hosts:
         sendCommand(host, 'bash sync.sh', seep_root + '/deploy')
     for host in hosts:
         getStatus(host, True)
-        adminProgress += (3.0 / (steps * len(hosts))) * 100
-    adminCurrentTask = 'Compiling seep...'
+        updateProgress(Globals.adminProgress + (4.0 / (steps * len(hosts))) * 100)
+    updateTask('Compiling seep...', 30)
     for host in hosts:
         sendCommand(host, './gradlew installApp', seep_root)
     for host in hosts:
         getStatus(host, True)
-        adminProgress += (4.0 / (steps * len(hosts))) * 100
+        updateProgress(Globals.adminProgress + (3.0 / (steps * len(hosts))) * 100)
 
-    adminCurrentTask = 'Updating Seep - Done'
-    adminProgress = 100
+    updateTask('Updating Seep - Done')
+    updateProgress(100)
 
 def unblockingRead(proc, retVal=''):
     if not proc.poll():
@@ -145,10 +184,9 @@ def unblockingRead(proc, retVal=''):
         return proc.communicate()[0]
 
 def submitQuery(queryName, deploymentSize):
-    global adminCurrentTask, adminProgress
     global baseYarnWorkerPort, baseYarnMasterPort
-    adminCurrentTask = 'Deploy ' + str(deploymentSize) + ' seep queries...'
-    adminProgress = 0
+    updateTask('Deploy ' + str(deploymentSize) + ' seep queries...', 100)
+    updateProgress(0, True)
 
     # Just a hack to measure progress, 5 is the number of prints containing SeepYarnAppSubmissionClient
     totalSteps = deploymentSize * 5
@@ -159,16 +197,15 @@ def submitQuery(queryName, deploymentSize):
         process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerPort), str(baseYarnMasterPort)], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while steps < 5 * (i + 1):
             out = unblockingRead(process)
-            print out
             steps += len(re.findall('SeepYarnAppSubmissionClient', out))
-            adminProgress = int(float(steps) / float(totalSteps) * 100.0)
+            updateProgress(float(steps) / float(totalSteps) * 100.0)
 
-    adminCurrentTask = 'Deploy seep queries...'
-    adminProgress = 100
+    updateTask('Deploy seep queries...')
+    updateProgress(100)
 
 def reset():
-    adminCurrentTask = ''
-    adminProgress = 0
+    updateTask('')
+    updateProgress(0, True)
 
 def status():
-    return {'current': adminCurrentTask, 'progress': int(adminProgress)}
+    return {'current': Globals.adminCurrentTask, 'progress': getProgress()}

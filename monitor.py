@@ -15,13 +15,13 @@ globalProcess = None
 
 class Monitor:
   def __init__(self, argvs):
-    usage = 'We want as arguments: 1) host 2) port 3) absolute path to logs directory'
+    usage = 'We want as arguments: 1) host 2) port 3) absolute path to userlogs directory'
     if len(argvs) != 4 or not os.path.exists(argvs[3]):
       print usage
-      return
+      exit(0)
 
     self.host = 'http://' + argvs[1] + ':' + argvs[2]
-    self.path = argvs[3]
+    self.path = os.path.abspath(argvs[3])
     self.prefix = self.path[:self.path.find('/logs')]  
 
     self.index = {}
@@ -73,9 +73,9 @@ class Monitor:
 
   def run(self):
     self.working = True
-    #while self.working:
-    #  self.scan()
-    #  self.sleep(30)
+    while self.working:
+      self.scan()
+      self.sleep(30)
 
   def stop(self):
     print 'Stoping monitor thread...'

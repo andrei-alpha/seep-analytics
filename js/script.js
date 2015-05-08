@@ -221,8 +221,6 @@ $(function() {
 })
 
 function openView(view) {
-  console.log(view);
-
   if (view.contains('containers'))
     openContainersView();
   else if(view.contains('apps'))
@@ -267,6 +265,8 @@ function openAdminView() {
 
   $('#graphs').css("display", "none");
   $('#admin-console').css("display", "block");
+  previousView = currentView;
+  currentView = 'admin';
   getAvailableOptions();
 }
 

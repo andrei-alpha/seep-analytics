@@ -287,10 +287,14 @@ def server_command(command):
   elif command == SUBMIT_QUERY:
     t = threading.Thread(target=admin.submitQuery, args=(data['queryName'], int(data['deploymentSize'])))
   else:
-    return json.dumps(admin.getAvailableOptions())
+    return 'Failed'
   t.deamon = True
   t.start()
-  return 'ok'
+  return 'ok' # This way we know the command was sent succesfully
+
+@app.route('/options')
+def server_options():
+  return json.dumps(admin.getAvailableOptions())
 
 @app.route('/command/status')
 def server_command_status():

@@ -64,8 +64,8 @@ function updateAnalytics() {
 function getAvailableOptions() {
 	$.ajax({
 		dataType: "json",
-    url: "/command/get_options",
-    type: "post",
+    url: "/options",
+    type: "get",
     success: function(response) {
     	for (key in response) {
         for (var i = 0; i < response[key].length; ++i) {
