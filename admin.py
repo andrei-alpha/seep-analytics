@@ -47,10 +47,11 @@ def getProgress():
 def updateTask(task, taskAllocatedPercentage = None):
     now = time.time()
     if Globals.startTimestamp and Globals.adminCurrentTask:
-        print Globals.adminCurrentTask, 'took', (now - Globals.startTimestamp), 'seconds'
+        deltaTime = int(now - Globals.startTimestamp)
+        print Globals.adminCurrentTask, 'took', deltaTime, 'seconds'
         # Update time estimations if required
-        if Globals.adminCurrentTask in Globals.timeEstimations:
-            Globals.timeEstimations[Globals.adminCurrentTask] = int(now - Globals.startTimestamp)
+        if Globals.adminCurrentTask in Globals.timeEstimations and deltaTime > 1:
+            Globals.timeEstimations[Globals.adminCurrentTask] = deltaTime
     if taskAllocatedPercentage:
         Globals.allocatedPercentage = taskAllocatedPercentage
         Globals.baseProgress = Globals.adminProgress

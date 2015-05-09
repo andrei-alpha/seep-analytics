@@ -76,7 +76,7 @@ function getChartData(dataset, labelsData) {
 function populateGraph(id, labels, data) {
   var container = $('#' + id).get()[0].getContext("2d");
   var chartData = getChartData(data, labels)
-  var lineChart = new Chart(container).Line(chartData, {scaleBeginAtZero: true});
+  var lineChart = new Chart(container).Line(chartData, {animation: false, scaleBeginAtZero: true});
   lineChartIds[id] = lineChart;
 }
 
