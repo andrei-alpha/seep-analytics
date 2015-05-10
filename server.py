@@ -27,6 +27,7 @@ EVENTS_PER_SECOND = 'events per second'
 LAST_DATAPOINTS = 40
 GENERAL = 'Total'
 AVERAGE = 'Average'
+STATISTICS = 'Statistics'
 FAIRNESS = 'Fairness'
 SUBMIT_QUERY = 'submit_query'
 UPDATE_SEEP = 'update_seep'
@@ -67,8 +68,8 @@ def convert(event):
   for i in xrange(4,9):
     label = re.search('[-a-z0-9]+[\sa-z0-9]+', event[i]).group().strip()
     value = re.search('[0-9.]+(?=$|\s)', event[i]).group().strip()
-    data[label] = float(value) 
-  data['time'] = int(timestamp)
+    data[label] = float(value)
+  data['time'] = int(timestamp / 30)
 
   return data
 
@@ -78,7 +79,7 @@ def updateContainerData(dataset, json):
 
 def updateAppData(dataset, json):
   for event in dataset:
-    if abs(int(event['time']) - int(json['time'])) < 30:
+    if event['time'] == json['time']:
       for label in event:
         if label == 'time':
           continue
@@ -91,7 +92,7 @@ def updateAppData(dataset, json):
   dataset.append(copy.deepcopy(json))
   return dataset[-LAST_DATAPOINTS:]
 
-def updateClusterData(dataset, json):
+def updateClusterData(dataset, json, appId):
   if not dataset:
     dataset[GENERAL] = {}
     dataset[GENERAL]['data'] = []
@@ -99,13 +100,17 @@ def updateClusterData(dataset, json):
     dataset[AVERAGE]['data'] = []
     dataset[FAIRNESS] = {}
     dataset[FAIRNESS]['data'] = []
+    dataset[STATISTICS] = {}
 
   dataset[GENERAL]['metric'] = EVENTS_PER_SECOND
   dataset[AVERAGE]['metric'] = EVENTS_PER_SECOND
   dataset[FAIRNESS]['metric'] = EVENTS_PER_SECOND
 
+  # Update overall statistics
+  dataset[STATISTICS] = updateStatistics(dataset[STATISTICS], json, appId)
+
   for index, event in enumerate(dataset[GENERAL]['data']):
-    if abs(int(event['time']) - int(json['time'])) < 30:
+    if event['time'] == json['time']:
       for label in event:
         # Update special labels when updating normal ones
         if label == 'time':
@@ -145,6 +150,43 @@ def updateClusterData(dataset, json):
   dataset[GENERAL]['data'] = dataset[GENERAL]['data'][-LAST_DATAPOINTS:]
   dataset[AVERAGE]['data'] = dataset[AVERAGE]['data'][-LAST_DATAPOINTS:]
   dataset[FAIRNESS]['data'] = dataset[FAIRNESS]['data'][-LAST_DATAPOINTS:]
+  return dataset
+
+eventsPerTime = {}
+eventsPerTime['apps'] = {}
+
+def updateIndividualStatistic(dataset, ts, value, count):
+  concurrentApps = len(eventsPerTime['apps'][ts])
+  if not concurrentApps in dataset:
+    dataset[concurrentApps] = {'count': 0, 'total': 0, 'tss': {}}
+  dataset[concurrentApps]['count'] += 1
+  dataset[concurrentApps]['total'] += value
+  if not ts in dataset[concurrentApps]['tss']:
+    dataset[concurrentApps]['tss'][ts] = [0, 0]
+  dataset[concurrentApps]['tss'][ts][0] += value
+  dataset[concurrentApps]['tss'][ts][1] += 1
+  return dataset
+
+def updateStatistics(dataset, json, appId):
+  ts = json['time']
+  value = json['1-minute rate']
+  # Add appId to this timestamp's list of apps
+  if not ts in eventsPerTime['apps']:
+    eventsPerTime['apps'][ts] = {}
+  eventsPerTime['apps'][ts][appId] = True
+
+  # Update for current event
+  dataset = updateIndividualStatistic(dataset, ts, value, 1)
+  concurrentApps = len(eventsPerTime['apps'][ts])
+
+  # Remove previous event if the number of concurrent apps increased
+  if concurrentApps > 1 and concurrentApps - 1 in dataset and ts in dataset[concurrentApps - 1]['tss']:
+    value = dataset[concurrentApps - 1]['tss'][ts][0]
+    count = dataset[concurrentApps - 1]['tss'][ts][1]
+    del dataset[concurrentApps - 1]['tss'][ts]
+    dataset[concurrentApps - 1]['count'] -= count
+    dataset[concurrentApps - 1]['total'] -= value
+    dataset = updateIndividualStatistic(dataset, ts, value, count)
   return dataset
 
 def getQueryFileName(data):
@@ -199,7 +241,7 @@ def update(appId, contId, data):
     dataset['apps'][appId]['metric'] = EVENTS_PER_SECOND
 
     # Add event to cluster dataset
-    dataset['cluster'] = updateClusterData(dataset['cluster'], json)
+    dataset['cluster'] = updateClusterData(dataset['cluster'], json, appId)
 
 def getAppId(path):
   idx1 = path.find('application')

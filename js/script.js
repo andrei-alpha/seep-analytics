@@ -25,36 +25,6 @@ function dataSelect(dataset, filter) {
   return selectedData;
 }
 
-function getMokeData() {
-  var mokeData = {
-    labels: [],
-    datasets: [
-      {
-        label: "Events per second",
-        fillColor: "rgba(220,220,220,0.2)",
-        strokeColor: "rgba(299,115,115,1)",
-        pointColor: "rgba(299,95,95,1)",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(220,220,220,1)",
-        data: []
-      }
-    ]
-  };
-  var time = new Date().getTime();
-  var data = mokeData;
-  
-  data['labels'] = []
-  data['datasets'][0]['data'] = []
-  for (var i = 9; i > 0; --i) {
-    label = new Date(time - i * 60000);
-    data['labels'].push(('0' + label.getHours())/slice(-2) + ":" + ('0' + label.getMinutes()).slice(-2)) 
-    data['datasets'][0]['data'].push(Math.ceil(Math.random() * 50))
-  }
-  console.log(data)
-  return data
-}
-
 function getChartData(dataset, labelsData) {
   return {
     labels: labelsData,
@@ -123,8 +93,76 @@ function getDataset() {
   });
 }
 
+function addHighChart(id, series, categories) {
+  $('#' + id).highcharts({
+    colors: ['#000099', '#006600', '#660099'],
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Cluster Throughput'
+    },
+    subtitle: {
+        text: 'SEEP workloads'
+    },
+    xAxis: {
+        title: {
+            text: 'streaming jobs running concurrently'
+        },
+        categories: categories,
+        crosshair: true
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'events per second'
+        }
+    },
+    tooltip: {
+        headerFormat: '<span style="font-size:10px">{point.key} queries</span><table>',
+        pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+            '<td style="padding:0"><b>{point.y:.1f} events / second</b></td></tr>',
+        footerFormat: '</table>',
+        shared: true,
+        useHTML: true
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    series: series
+  });
+}
+
+function updateStatistics(dataset) {
+  var categories = []
+  var series = [{'name': 'Cluster Throughput', 'data': []},
+    {'name': 'Average Container', 'data': []}];
+  for (key in dataset) {
+    points = dataset[key]['tss']
+    avgPerCluster = dataset[key]['total'] / Object.keys(points).length;
+    avgPerContainer = dataset[key]['total'] / dataset[key]['count'];
+
+    categories.push(key)
+    series[0]['data'].push(avgPerCluster);
+    series[1]['data'].push(avgPerContainer);
+    //console.log("avg throughput when running " + key + " apps: " + avgPerCluster)
+    //console.log("avg /container when running " + key + " apps: " + avgPerContainer)
+  }
+
+  var id = 'stats-graph'
+  $('#graphs > tbody:last').append('<tr><td colspan="2">Statistics</td></tr><tr><td colspan="2"><div id="' + id + '" height="300"></div></td></tr>');
+  setTimeout(function() {
+    // TODO: make nicer
+    addHighChart(id, series, categories);
+  }, 100);
+}
+
 function updateGraphs(dataset, graphType) {
   var shallowUpdate = true;
+  var runningApps = 0;
   if (previousView != currentView) {
     previousView = currentView;
     shallowUpdate = false;
@@ -138,11 +176,21 @@ function updateGraphs(dataset, graphType) {
   }
   keys = keys.sort();
 
+  // Show statistic first
+  for (var kind = keys.length - 1; kind >= 0; --kind) {
+    if (keys[kind] == 'Statistics') {
+      updateStatistics(dataset[keys[kind]]);
+    }
+  }
+
   for (var kind = keys.length - 1; kind >= 0; --kind) {
     var key = keys[kind];
-    var item = dataset[key]
+    var item = dataset[key];
     var type = item['type'];
     var metric = item['metric']
+
+    if (key == 'Statistics')
+      continue;
 
     // Don't show source since everthing is 0
     if (type == 'Source')
@@ -155,8 +203,8 @@ function updateGraphs(dataset, graphType) {
     for (var j = 0; j < item['data'].length; ++j) {
       for (var label in item['data'][j]) {
         if (label == 'time') {
-          // python timestamp is in seconds so we need to transform in miliseconds
-          var date = new Date(item['data'][j][label] * 1000);
+          // python timestamp is in seconds / 30 so we need to transform in miliseconds
+          var date = new Date(item['data'][j][label] * 1000 * 30);
           labels.push(('0' + date.getHours()).slice(-2) + ":" + ('0' + date.getMinutes()).slice(-2))
 
           if (date.getTime() > lastEventTimestamp)
@@ -190,8 +238,10 @@ function updateGraphs(dataset, graphType) {
       appName = parseInt(key.split("_")[1]);
       graphName = 'Application <b>' + appName + '</b> ' + item['query'];
 
-      if ((new Date()).getTime() - lastEventTimestamp < 600000)
+      if ((new Date()).getTime() - lastEventTimestamp < 60000) {
+        ++runningApps;
         graphName += String(appName) + '<img style="margin-left: 15px;" width="18px" src="static/css/loading.gif"></img>';
+      }
     }
     else
       graphName = 'Wombat Cluster <b>' + key + '</b>';
