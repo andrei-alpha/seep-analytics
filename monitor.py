@@ -1,3 +1,4 @@
+import psutil
 import os
 import re
 import sys
@@ -12,6 +13,8 @@ from bottle import Bottle, response, request
 
 app = Bottle()
 globalMonitor = None
+globalServerInfo = None
+globalInfoThread = None
 globalProcess = None
 
 class Monitor:
@@ -113,7 +116,7 @@ def server_command():
     globalProcess = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #return subprocess.check_output(command, cwd=cwd)
 
-@app.route('/status', method='get')
+@app.route('/status')
 def server_status():
   global globalProcess
   if not globalProcess:
@@ -122,11 +125,38 @@ def server_status():
     retVal = ''
     while (select.select([globalProcess.stdout],[],[],0)[0]!=[]):
       retVal+=globalProcess.stdout.read(1)
-    return retVal
+    return (retVal if len(retVal) else 'pending')
   else:
     out = globalProcess.communicate()[0]
     globalProcess = None
     return out
+
+def getServerInfo(cwd):
+  global globalServerInfo
+  info = {}
+  mem = psutil.phymem_usage()
+  info['memory'] = [mem.total, mem.percent]
+  info['cpu'] = [psutil.cpu_percent(interval=1)]
+  out = subprocess.check_output(['bash', 'check-logs-size.sh'], cwd=cwd)
+  info['logs'] = [int(x) for x in re.findall('[0-9]+(?=\t)', out)]
+  globalServerInfo = info
+
+@app.route('/info', method='post')
+def server_info():
+  global globalInfoThread
+  cwd = request.forms.get('cwd')
+  globalInfoThread = threading.Thread(target=getServerInfo, args=(cwd,))
+  globalInfoThread.deamon = True
+  globalInfoThread.start()
+
+@app.route('/info-status')
+def server_status():
+  global globalInfoThread, globalServerInfo
+  response.content_type = 'application/json'
+  if globalInfoThread:
+    globalInfoThread.join()
+    return globalServerInfo
+  return json.dumps({})
 
 app.run(host=gethostname(), port=7008, reloader=False)
 globalMonitor.stop()

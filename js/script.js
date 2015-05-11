@@ -25,24 +25,6 @@ function dataSelect(dataset, filter) {
   return selectedData;
 }
 
-function getChartData(dataset, labelsData) {
-  return {
-    labels: labelsData,
-    datasets: [
-      {
-        label: "Events per second",
-        fillColor: "rgba(220,220,220,0.2)",
-        strokeColor: "rgba(299,115,115,1)",
-        pointColor: "rgba(299,95,95,1)",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(220,220,220,1)",
-        data: dataset
-      }
-    ]
-  }
-}
-
 function populateGraph(id, labels, data) {
   var container = $('#' + id).get()[0].getContext("2d");
   var chartData = getChartData(data, labels)
@@ -88,55 +70,15 @@ function getDataset() {
     success: function(response){
       globalDataset = response;
       openView(currentView);
-      //updateGraphs(globalDataset[currentView], currentView);
     },
   });
 }
 
 function addHighChart(id, series, categories) {
-  $('#' + id).highcharts({
-    colors: ['#000099', '#006600', '#660099'],
-    chart: {
-        type: 'column'
-    },
-    title: {
-        text: 'Cluster Throughput'
-    },
-    subtitle: {
-        text: 'SEEP workloads'
-    },
-    xAxis: {
-        title: {
-            text: 'streaming jobs running concurrently'
-        },
-        categories: categories,
-        crosshair: true
-    },
-    yAxis: {
-        min: 0,
-        title: {
-            text: 'events per second'
-        }
-    },
-    tooltip: {
-        headerFormat: '<span style="font-size:10px">{point.key} queries</span><table>',
-        pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
-            '<td style="padding:0"><b>{point.y:.1f} events / second</b></td></tr>',
-        footerFormat: '</table>',
-        shared: true,
-        useHTML: true
-    },
-    plotOptions: {
-        column: {
-            pointPadding: 0.2,
-            borderWidth: 0
-        }
-    },
-    series: series
-  });
+  $('#' + id).highcharts();
 }
 
-function updateStatistics(dataset) {
+function updateStatistics(dataset, shallowUpdate) {
   var categories = []
   var series = [{'name': 'Cluster Throughput', 'data': []},
     {'name': 'Average Container', 'data': []}];
@@ -148,16 +90,19 @@ function updateStatistics(dataset) {
     categories.push(key)
     series[0]['data'].push(avgPerCluster);
     series[1]['data'].push(avgPerContainer);
-    //console.log("avg throughput when running " + key + " apps: " + avgPerCluster)
-    //console.log("avg /container when running " + key + " apps: " + avgPerContainer)
   }
 
-  var id = 'stats-graph'
-  $('#graphs > tbody:last').append('<tr><td colspan="2">Statistics</td></tr><tr><td colspan="2"><div id="' + id + '" height="300"></div></td></tr>');
-  setTimeout(function() {
-    // TODO: make nicer
-    addHighChart(id, series, categories);
-  }, 100);
+  if (shallowUpdate == false) {
+    setTimeout(function() {
+      $('#stats-graph').highcharts(getHighChartData(series, categories));
+      $('#cpu-graph').highcharts(Highcharts.merge(getGaugeOptions(), getCpuChartData()));
+      $('#memory-graph').highcharts(Highcharts.merge(getGaugeOptions(), getMemoryChartData()));
+    }, 100);
+  } else {
+    var chart = $('#stats-graph').highcharts();
+    chart.series[0].setData(series[0]['data']);
+    chart.series[1].setData(series[1]['data']);
+  }
 }
 
 function updateGraphs(dataset, graphType) {
@@ -167,6 +112,13 @@ function updateGraphs(dataset, graphType) {
     previousView = currentView;
     shallowUpdate = false;
     $('#graphs tr').remove();
+
+    if (currentView == "cluster") {
+      var statsTemplate = $('#statisticsTemplate').html();
+      var tableTemplate = $('#infoTableTemplate').html();
+      var statsTemplateHtml = statsTemplate.format('stats-graph', tableTemplate);
+      $('#graphs > tbody:last').append(statsTemplateHtml);
+    }
   }
 
   // Load the apps / containers in reverse so the newest one is at top
@@ -179,7 +131,7 @@ function updateGraphs(dataset, graphType) {
   // Show statistic first
   for (var kind = keys.length - 1; kind >= 0; --kind) {
     if (keys[kind] == 'Statistics') {
-      updateStatistics(dataset[keys[kind]]);
+      updateStatistics(dataset[keys[kind]], shallowUpdate);
     }
   }
 
@@ -271,9 +223,13 @@ function updateGraphs(dataset, graphType) {
 
 $(function() {
   getDataset();
+  askClusterInfo();
   setInterval(function() {
     getDataset();
   }, 10000);
+  setInterval(function() {
+    askClusterInfo();
+  }, 10000)
 })
 
 function openView(view) {
@@ -309,7 +265,6 @@ function openAppsView() {
 
 function openContainersView() {
   window.history.pushState({}, "", "/containers");
-
   $('#admin-console').css("display", "none");
   $('#graphs').css("display", "block");
   currentView = 'containers';

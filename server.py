@@ -19,6 +19,7 @@ app = Bottle()
 files = {}
 urls = {}
 dataset = {}
+totalEventsToDate = 0
 dataset['containers'] = {}
 dataset['apps'] = {}
 dataset['cluster'] = {}
@@ -234,6 +235,10 @@ def update(appId, contId, data):
     #print 'find', appId, contId, json
     #print ''
 
+    # Add to toal number of events. Assume a event is every 30 sec
+    global totalEventsToDate
+    totalEventsToDate += json['1-minute rate'] * 30
+
     # Add event to containers dataset
     dataset['containers'][contId]['data'] = updateContainerData(dataset['containers'][contId]['data'], json)
     dataset['containers'][contId]['metric'] = EVENTS_PER_SECOND
@@ -318,6 +323,28 @@ def index():
 def server_static(filepath):
     return static_file(filepath, root='')
 
+@app.route('/command/status')
+def server_command_status():
+  return admin.status()
+
+@app.route('/command/get_info/status')
+def server_get_info_status():
+  if not admin.Globals.clusterInfo:
+      return 'pending'
+  response.content_type = 'application/json'
+  clusterInfo = copy.deepcopy(admin.Globals.clusterInfo)
+  admin.Globals.clusterInfo = None
+  clusterInfo['total_events'] = totalEventsToDate
+  if GENERAL in dataset['cluster'] and 'data' in dataset['cluster'][GENERAL] and len(dataset['cluster'][GENERAL]['data']):
+    clusterInfo['current_rate'] = dataset['cluster'][GENERAL]['data'][-1]['1-minute rate']
+  return clusterInfo
+
+@app.route('/command/get_info', method='post')
+def server_get_info():
+  t = threading.Thread(target=admin.clusterInfo())
+  t.deamon = True
+  t.start()
+
 @app.route('/command/<command>', method='post')
 def server_command(command):
   data = dict(request.forms)
@@ -343,10 +370,6 @@ def server_command(command):
 @app.route('/options')
 def server_options():
   return json.dumps(admin.getAvailableOptions())
-
-@app.route('/command/status')
-def server_command_status():
-  return admin.status()
 
 @app.route("/<url:re:.+>")
 def logs(url):

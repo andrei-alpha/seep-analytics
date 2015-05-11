@@ -158,6 +158,39 @@
       </tr>
     </script>
 
+    <!-- Info table template -->
+    <script type="text/template" id="infoTableTemplate">
+      <table class="table">
+        <tr><th>Cluster Information</th><th></th></tr>
+        <tr><td>Current rate:</td><td id="td-current-rate">Loading...</td></tr>
+        <tr><td>Total events:</td><td id="td-total-events">Loading...</td></tr>
+        <tr><td>Queries running:</td><td>Loading...</td></tr>
+        <tr><td>Kafka logs size:</td><td id="tb-kakfa-logs">Loading...</td></tr>
+        <tr><td>Hadoop logs size:</td><td id="tb-hadoop-logs">Loading...</td></tr>
+        <tr><td>Total memory available:</td><td id="tb-total-mem">Loading...</td></tr>
+        <tr><td>Total cpus available:</td><td id="tb-total-cpus">Loading...</td></tr>
+      </table>
+    </script>
+
+    <!-- Cluster statistic template -->
+    <script type="text/template" id="statisticsTemplate">
+      <tr>
+        <td colspan="2">Statistics</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td colspan="2"><div id="{0}" height="250"></div></td>
+        <td>
+          <table>
+            <tr><td><div id="cpu-graph" style="width: 300px; height: 190px;"></div></td></tr>
+            <tr><td><div id="memory-graph" style="width: 300px; height: 190px;"></div></td></tr>
+          </table>
+        </td>
+        <td>{1}</td>
+      </tr>
+    </script>
+
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
@@ -166,6 +199,9 @@
     <script src="static/js/chart.js"></script>
     <script src="http://code.highcharts.com/highcharts.js"></script>
     <script src="http://code.highcharts.com/modules/exporting.js"></script>
+    <script src="http://code.highcharts.com/highcharts-more.js"></script>
+    <script src="http://code.highcharts.com/modules/solid-gauge.js"></script>
+    <script src="static/js/chart-data.js"></script>
     <script src="static/js/script.js"></script>
     <script src="static/js/admin.js"></script>
   </body>

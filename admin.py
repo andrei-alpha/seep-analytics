@@ -13,6 +13,7 @@ class Globals:
     expectedTime = None
     baseProgress = None
     allocatedPercentage = None
+    clusterInfo = None
     timeEstimations = {
         'Stopping all seep queries...': 2,
         'Fetching origin...': 1,
@@ -75,11 +76,26 @@ def sendCommand(host, command, cwd='.'):
         except requests.ConnectionError:
             print 'Failed for host:', host
 
+def sendRequest(host, path, data, type):
+    if type == 'get':
+        try:
+            return requests.get(host + path)
+        except requests.ConnectionError:
+            print 'Failed for host:', host
+    else:
+        try:
+            return requests.post(host + path, data=data)
+        except requests.ConnectionError:
+            print 'Failed for host:', host
+
 def getStatus(host, readAll = False):
     out = requests.get(host + '/status').text
     while readAll:
         res = requests.get(host + '/status').text
-        if not res:
+        if res == 'pending':
+            time.sleep(1)
+            continue
+        if not res or len(res) == 0:
             break
         out += res
     return out
@@ -227,6 +243,35 @@ def clearHadoopLogs():
 
     updateTask('Deleting Hadoop Logs - Done')
     updateProgress(100)
+
+def clusterInfo():
+    cInfo = {}
+    for host in hosts:
+        sendRequest(host, '/info', {'cwd': seep_root + '/deploy'}, "post")
+    for host in hosts:
+        res = sendRequest(host, '/info-status', None, "get")
+        if not res:
+            continue
+        info = res.json()
+        if not cInfo:
+            cInfo = info
+        elif info:
+            cInfo = {
+                'memory': [sum(x) for x in zip(cInfo['memory'], info['memory'])],
+                'logs': [sum(x) for x in zip(cInfo['logs'], info['logs'])],
+                'cpu': [sum(x) for x in zip(cInfo['cpu'], info['cpu'])]
+            }
+    if cInfo:
+        Globals.clusterInfo = {
+            'total_mem': cInfo['memory'][0],
+            'total_cpus': len(hosts) * 4,
+            'cpu_usage': float(cInfo['cpu'][0]) / len(hosts),
+            'mem_usage': float(cInfo['memory'][1]) / len(hosts),
+            'kafka_logs': cInfo['logs'][0] * 1024,
+            'hadoop_logs': cInfo['logs'][1] * 1024,
+        }
+    else:
+        Globals.clusterInfo = {'status': 'failed'}
 
 def reset():
     updateTask('')
