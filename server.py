@@ -159,12 +159,12 @@ def updateIndividualStatistic(dataset, ts, value, count):
   concurrentApps = len(eventsPerTime['apps'][ts])
   if not concurrentApps in dataset:
     dataset[concurrentApps] = {'count': 0, 'total': 0, 'tss': {}}
-  dataset[concurrentApps]['count'] += 1
+  dataset[concurrentApps]['count'] += count
   dataset[concurrentApps]['total'] += value
   if not ts in dataset[concurrentApps]['tss']:
     dataset[concurrentApps]['tss'][ts] = [0, 0]
   dataset[concurrentApps]['tss'][ts][0] += value
-  dataset[concurrentApps]['tss'][ts][1] += 1
+  dataset[concurrentApps]['tss'][ts][1] += count
   return dataset
 
 def updateStatistics(dataset, json, appId):

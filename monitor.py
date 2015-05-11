@@ -49,7 +49,7 @@ class Monitor:
     size = os.path.getsize(path)
     if size > self.index[path]:
       with open(path, 'r') as fin:
-        fin.read(self.index[path])
+        fin.seek(self.index[path])
         data = fin.read()
 
         filteredData = data
