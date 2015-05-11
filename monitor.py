@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import select
 import subprocess
 import requests
 import time
@@ -118,6 +119,7 @@ def server_status():
   if not globalProcess:
     return None
   if globalProcess.poll():
+    retVal = ''
     while (select.select([globalProcess.stdout],[],[],0)[0]!=[]):
       retVal+=globalProcess.stdout.read(1)
     return retVal

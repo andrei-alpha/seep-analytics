@@ -61,6 +61,14 @@ function updateAnalytics() {
 	sendCommand('update_analytics', data)
 }
 
+function clearKafkaLogs() {
+  sendCommand('clear_kafka_logs', {});
+}
+
+function clearHadoopLogs() {
+  sendCommand('clear_hadoop_logs', {});
+}
+
 function getAvailableOptions() {
 	$.ajax({
 		dataType: "json",

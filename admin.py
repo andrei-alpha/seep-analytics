@@ -204,6 +204,30 @@ def submitQuery(queryName, deploymentSize):
     updateTask('Deploy seep queries...')
     updateProgress(100)
 
+def clearKafkaLogs():
+    updateTask('Deleting Kafka Logs...', 100)
+    for host in hosts:
+        sendCommand(host, 'bash kafka-log-cleaner.sh', seep_root + '/deploy')
+    for host in hosts:
+        getStatus(host, True)
+        updateProgress(Globals.adminProgress + 1.0 / len(hosts))
+
+    updateTask('Deleting Kafka Logs - Done')
+    updateProgress(100)
+
+def clearHadoopLogs():
+    updateTask('Deleting Hadoop Logs...', 100)
+    # Assume that HADOOP_PREFIX is set up
+    hadoop_prefix = os.environ["HADOOP_PREFIX"]
+    for host in hosts:
+        sendCommand(host, 'bash hadoop-log-cleaner.sh', hadoop_prefix)
+    for host in hosts:
+        getStatus(host, True)
+        updateProgress(Globals.adminProgress + 1.0 / len(hosts))
+
+    updateTask('Deleting Hadoop Logs - Done')
+    updateProgress(100)
+
 def reset():
     updateTask('')
     updateProgress(0, True)

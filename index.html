@@ -56,11 +56,13 @@
               <img src="static/imgs/hadoop.png" width="125">
               <div class="caption">
                 <h3>Hadoop YARN</h3>
-                <p>Shortcut to main YARN components such as: <p>1) Resouce Manager to view all running applications and where they are allocated</p><p>2) Namenode to see cluster storage, availability and replication.</p></p>
-                <hr style="height:45px; visibility:hidden;" />
+                <p>Shortcut to main YARN components such as: <p>1) Namenode to see cluster storage, availability and replication.</p> <p>2) Resouce Manager to view all running applications and where they are allocated</p></p>
+                <p>3) Clear Hadoop user log data from each machine and from analytics server memory.</p></p>
+                <hr style="height:23px; visibility:hidden;" />
                 <p>
+                  <a href="http://wombat01.doc.res.ic.ac.uk:50070/" class="btn btn-success" role="button">Namenode</a>
                   <a href="http://wombat01.doc.res.ic.ac.uk:8088/" class="btn btn-primary" role="button">Resource Manager</a>
-                  <a href="http://wombat01.doc.res.ic.ac.uk:50070/" class="btn btn-success" role="button">Namenode Manager</a>
+                  <a onclick="clearHadoopLogs()" class="btn btn-danger" role="button">Logs</a>
                 </p>
               </div>
             </div>
@@ -72,7 +74,7 @@
                 <hr style="height:34px; visibility:hidden;" />
                 <h3>SEEP</h3>
                 <p>Real-Time Data Processing Framework. Available actions: <p>1) Deploy new query to cluster</p><p>2) Open Web-UI</p><p>3) Stop all running queries.</p></p>
-                <hr style="height:0px; visibility:hidden;" />
+                <hr style="height:27px; visibility:hidden;" />
                 <select id="available-queries" class="selectpicker"></select>
                 <select id="deployment-size" class="selectpicker">
                   <option>1</option>
@@ -97,14 +99,18 @@
               <img src="static/imgs/git.png" width="245">
               <div class="caption">
                 <h3>Admin Console</h3>
-                <p>Administration console. Available actions: <p>1) Update SEEP version and re-compile the system cluster wide</p><p>2) Update analytics version and restart system cluster wide.</p></p>
-                <hr style="height:3px; visibility:hidden;" />
+                <p>Administration console. Available actions: <p>1) Update SEEP version and re-compile the system cluster wide</p><p>2) Update analytics version and restart system cluster wide.</p>
+                <p>3) Clear Kafka log data from each machine.</p></p>
+                <hr style="height:1px; visibility:hidden;" />
                 <select id="seep-branches" class="selectpicker"></select>
                 <select id="analytics-branches" class="selectpicker"></select>
+                
                 <p>
-                  <a onclick="updateSEEP()" class="btn btn-primary" role="button">Update SEEP</a>
-                  <a onclick="updateAnalytics()" class="btn btn-primary" role="button">Update Analytics</a>
+                  <a onclick="updateSEEP()" class="btn btn-success" role="button">Update SEEP</a>
+                  <a onclick="updateAnalytics()" class="btn btn-primary" role="button">Update me</a>
+                  <a onclick="clearKafkaLogs()" class="btn btn-danger" role="button">Kafka Logs</a>
                 </p>
+
               </div>
             </div>
           </div>
