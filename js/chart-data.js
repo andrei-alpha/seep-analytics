@@ -130,7 +130,7 @@ function getChartData(dataset, categories) {
   }
 }
 
-function getHighChartData(dataset, categories) {
+function getThroughputData(dataset, categories) {
   return {
     colors: ['#000099', '#006600', '#660099'],
     chart: {
@@ -173,5 +173,68 @@ function getHighChartData(dataset, categories) {
         }
     },
     series: dataset
+  }
+}
+
+function getHighchartData(title, labels, data) {
+  return {
+    /*chart: {
+      type: 'pline',
+      zoomType: 'x'
+    },*/
+    colors: ['rgba(299,115,115,1)'],
+    title: {
+      align: 'left',
+      text: title,
+      style: {"fontSize": "12px" }
+    },
+    legend: {
+      enabled: false
+    },
+    xAxis: {
+      categories: labels,
+      labels: {
+        formatter: function() {
+          var date = new Date(this.value);
+          return ('0' + date.getHours()).slice(-2) + ":" + ('0' + date.getMinutes()).slice(-2)
+        }
+      }
+    },
+    yAxis: {
+      title: {
+        text: 'events per second'
+      },
+      min: 0
+    },
+    credits: {
+        enabled: false
+    },
+    plotOptions: {
+      spline: {
+        marker: {
+            enabled: true
+        }
+      }
+    },
+    tooltip: {
+      headerFormat: '',
+      pointFormat: '{point.y:.2f} events per second'
+    },
+    exporting: {
+      enabled: false
+    },
+    series: [{
+      name: 'events per second',
+      data: data,
+      lineWidth: 1.5,
+      marker: {
+       enabled: true,
+       symbol: 'circle',
+       radius: 3
+      },
+      tooltip: {
+        valueDecimals: 1
+      }
+    }]
   }
 }

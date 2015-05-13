@@ -1,66 +1,98 @@
 var globalDataset;
 var currentView = window.location.pathname, previousView = '';
 var dataFilters = {
-  '1-minute rate': [10, 1],
-  '5-minute rate': [20, 2],
-  '5-minute rate-fairness': [20, 2],
-  '5-minute rate-avg': [20, 2],
-  '15-minute rate': [40, 4],
-  '15-minute rate-fairness': [40, 4],
-  '15-minute rate-avg': [40, 4],
-  'mean rate': [20, 2],
-  'mean rate-fairness': [20, 2],
-  'mean rate-avg': [20, 2],
-  'default': [10, 1] 
+  '1-minute rate': 1,
+  '5-minute rate': 2,
+  '5-minute rate-fairness': 2,
+  '5-minute rate-avg': 2,
+  '15-minute rate': 4,
+  '15-minute rate-fairness': 4,
+  '15-minute rate-avg': 4,
+  'mean rate': 4,
+  'mean rate-fairness': 4,
+  'mean rate-avg': 4,
+  'default': 1 
 }
 var graphTitles = ['1-minute rate', '5-minute rate', '15-minute rate', 'mean rate',
   '1-minute rate-avg', '5-minute rate-avg', '15-minute rate-avg', 'mean rate-avg',
   '1-minute rate-fairness', '5-minute rate-fairness', '15-minute rate-fairness', 'mean rate-fairness'];
 var lineChartIds = {}
 
-function dataSelect(dataset, filter) {
+/*
+Performs data aggregation by the given interval
+*/
+function dataSelect(title, labels, dataset) {
+  var filter;
+  if (title in dataFilters)
+    filter = dataFilters[title];
+  else
+    filter = dataFilters['default'];
+
   selectedData = []
-  for (var i = Math.max(0, dataset.length - filter[0]); i < dataset.length; i += filter[1])
-    selectedData.push(dataset[i]);
-  return selectedData;
+  selectedLabels = []
+  var MaxItems = 10;
+  var previousTimestamp = -1;
+  var start = 0;
+  for (var i = 0; i < labels.length; ++i) {
+    if (previousTimestamp != -1 && labels[i] - previousTimestamp > 5 * 60 * 1000 /* 5 minutes */ ) {
+      console.log("set start to " + i + " this: " + labels[i] + " prev: " + previousTimestamp);
+      start = i;
+    }
+    previousTimestamp = labels[i];
+  }
+  for (var i = Math.max(start, dataset.length - MaxItems * filter); i < dataset.length; i += filter) {
+    var sum = 0;
+    for (var j = 0; j < filter && i + j < dataset.length; ++j)
+      sum += dataset[i + j];
+    var avg = sum / Math.min(filter, dataset.length - i);
+    selectedData.push(avg);
+    selectedLabels.push(labels[Math.min(i + filter - 1, dataset.length)]);
+  }
+  return [selectedLabels, selectedData];
 }
 
-function populateGraph(id, labels, data) {
-  var container = $('#' + id).get()[0].getContext("2d");
+function populateGraph(id, title, data) {
+  $('#' + id).highcharts(getHighchartData(title, data[0], data[1]));
+
+  /*var container = $('#' + id).get()[0].getContext("2d");
   var chartData = getChartData(data, labels)
   var lineChart = new Chart(container).Line(chartData, {animation: false, scaleBeginAtZero: true});
-  lineChartIds[id] = lineChart;
+  lineChartIds[id] = lineChart;*/
 }
 
-function shallowPopulateGraphs(id, labels, data) {
-  var lineChart = lineChartIds[id];
-  if (lineChart == undefined || lineChart.datasets[0].points.length == 0) {
-    populateGraph(id, labels, data)
-    return;
-  }
-  var chartData = getChartData(data, labels)
+function updateGraph(id, title, data) {
+  var chart = $('#' + id).highcharts();
 
-  while(lineChart.datasets[0].points.length && lineChart.datasets[0].points[0].label != chartData.labels[0] || 
-    (lineChart.datasets[0].points.length > 1 && lineChart.datasets[0].points[1].label != chartData.labels[1])) {
-    lineChart.removeData();
+  if (chart == undefined || chart.series[0].data.length == 0) {
+    populateGraph(id, title, data);
+  }
+  chart.series[0].setData(data[1]);
+  chart.xAxis[0].setCategories(data[0]);
+  /*
+  while(chart.series[0].data.length && chart.xAxis[0].categories[0] != data[0][0] || 
+    (chart.series[0].data.length > 1 && chart.xAxis[0].categories[1] != data[0][1])) {
+      chart.series[0].data[0].remove();
   }
 
-  for (var i = lineChart.datasets[0].points.length; i < chartData.datasets[0].data.length; ++i) {
-    value = chartData.datasets[0].data[i];
-    label = chartData.labels[i];
-    lineChart.addData([value], label);
+  /*
+
+  for (var i = chart.series[0].data.length; i < data[0].length; ++i) {
+    chart.series[0].addPoint(data[0][i], data[1][i]);
   }
   
   var needsUpdate = false;
-  for (var i = 0; i < chartData.datasets[0].data.length; ++i) {
-    if (chartData.datasets[0].data[i] != lineChart.datasets[0].points[i].value) {
-      lineChart.datasets[0].points[i].value = chartData.datasets[0].data[i];
+  for (var i = 0; i < data[0].length; ++i) {
+    if (chart.series[0].data[i].x != data[0][i] || chart.series[0].data[i].y != data[1][i]) {
       needsUpdate = true;
     }
   }
 
+  newData = [];
+  for (var i = 0; i < data[0].length; ++i) {
+    newData.push({'x': data[0][i], 'y': data[1][i]});
+  }
   if (needsUpdate == true)
-    lineChart.update()
+    chart.series[0].setData(newData);*/
 }
 
 function getDataset() {
@@ -94,7 +126,7 @@ function updateStatistics(dataset, shallowUpdate) {
 
   if (shallowUpdate == false) {
     setTimeout(function() {
-      $('#stats-graph').highcharts(getHighChartData(series, categories));
+      $('#stats-graph').highcharts(getThroughputData(series, categories));
       $('#cpu-graph').highcharts(Highcharts.merge(getGaugeOptions(), getCpuChartData()));
       $('#memory-graph').highcharts(Highcharts.merge(getGaugeOptions(), getMemoryChartData()));
     }, 100);
@@ -145,7 +177,7 @@ function updateGraphs(dataset, graphType) {
       continue;
 
     // Don't show source since everthing is 0
-    if (type == 'Source')
+    if (type == 'Source' || (type == undefined && graphType == "containers"))
       continue;
 
     var labels = []
@@ -156,11 +188,11 @@ function updateGraphs(dataset, graphType) {
       for (var label in item['data'][j]) {
         if (label == 'time') {
           // python timestamp is in seconds / 30 so we need to transform in miliseconds
-          var date = new Date(item['data'][j][label] * 1000 * 30);
-          labels.push(('0' + date.getHours()).slice(-2) + ":" + ('0' + date.getMinutes()).slice(-2))
+          var timestamp = item['data'][j][label] * 1000 * 30
+          labels.push(timestamp);
 
-          if (date.getTime() > lastEventTimestamp)
-            lastEventTimestamp = date.getTime();
+          if (timestamp > lastEventTimestamp)
+            lastEventTimestamp = timestamp;
         } else {
           if (data[label] == null)
             data[label] = []
@@ -201,22 +233,16 @@ function updateGraphs(dataset, graphType) {
     var doShallowPopulate = true;
     if (!shallowUpdate || $('#' + ids[0]).length == 0) {
       var graphsTemplate = $('#graphsTemplate').html();
-      var template = graphsTemplate.format(graphName, titles[0], ids[0], titles[1], ids[1], titles[2], ids[2], titles[3], ids[3], metric);
+      var template = graphsTemplate.format(graphName, ids[0], ids[1], ids[2], ids[3]);
       $('#graphs > tbody:last').append(template);
       doShallowPopulate = false;
     }
 
     for (var i = 0; i < ids.length; ++i) {
-      var filter;
-      if (titles[i] in dataFilters)
-        filter = dataFilters[titles[i]]
-      else
-        filter = dataFilters['default']
-      
       if (doShallowPopulate)
-        shallowPopulateGraphs(ids[i], dataSelect(labels, filter), dataSelect(data[titles[i]], filter));
+        updateGraph(ids[i], titles[i], dataSelect(titles[i], labels, data[titles[i]]));
       else
-        populateGraph(ids[i], dataSelect(labels, filter), dataSelect(data[titles[i]], filter));
+        populateGraph(ids[i], titles[i], dataSelect(titles[i], labels, data[titles[i]]));
     }
   }
 }
