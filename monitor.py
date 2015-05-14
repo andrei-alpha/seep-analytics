@@ -96,6 +96,9 @@ class ResourceThread:
     self.host = host
     self.seep_root = seep_root
 
+  def args(self):
+    return (self.host, self.seep_root)
+
   def scan(self):
     mem = psutil.phymem_usage()
     self.info['memory'] = [mem.total, mem.percent]
@@ -120,8 +123,11 @@ class ResourceThread:
     self.bytes_recv = net.bytes_recv
 
     # Get other malicious data
-    out = subprocess.check_output(['bash', 'check-logs-size.sh'], cwd=(self.seep_root + '/deploy'))
-    self.info['logs'] = [int(x) for x in re.findall('[0-9]+(?=\t)', out)]
+    try: 
+      out = subprocess.check_output(['bash', 'check-logs-size.sh'], cwd=(self.seep_root + '/deploy'))
+      self.info['logs'] = [int(x) for x in re.findall('[0-9]+(?=\t)', out)]
+    except subprocess.CalledProcessError:
+      self.info['logs'] = [0, 0]
     self.info['host'] = os.uname()[1]
     payload = {'event': 'resource report', 'data': json.dumps(self.info)}
     send(self, payload)
@@ -149,7 +155,7 @@ def startWatcherThread(host, path, prefix):
   t.deamon = True
   t.start()
 
-def startResouceThread(host, seep_root):
+def startResourceThread(host, seep_root):
   global globalResourceThread
   globalResourceThread = ResourceThread(host, seep_root)
   t = threading.Thread(target=globalResourceThread.run)
@@ -161,10 +167,13 @@ def server_command():
   command = request.forms.get('command').split(' ')
   cwd = request.forms.get('cwd')
   if command == ['reset']:
-    global globalWatcherThread
+    global globalWatcherThread, globalResourceThread
     args = globalWatcherThread.args()
     globalWatcherThread.stop()
     startWatcherThread(args[0], args[1], args[2])
+    args = globalResourceThread.args()
+    globalResourceThread.stop()
+    startResourceThread(args[0], args[1])
   else:
     global globalProcess
     print 'run', command
@@ -198,7 +207,7 @@ if __name__ == '__main__':
   seep_root = os.path.abspath(sys.argv[4])
 
   startWatcherThread(host, path, prefix)
-  startResouceThread(host, seep_root)
+  startResourceThread(host, seep_root)
 
 app.run(host=gethostname(), port=7008, reloader=False)
 globalWatcherThread.stop()
