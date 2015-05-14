@@ -182,11 +182,12 @@ function getBarsChartData(dataset, categories, title, text, type) {
     chart: {
       type: 'column',
     },
+    colors: ['#7CB5EC', '#FF7373'],
     title: {
       text: title
     },
     legend: {
-      enabled: false
+      enabled: (type == 'percent' ? false : true)
     },
     xAxis: {
       categories: categories,
@@ -249,7 +250,7 @@ function getAreaChartData(title, text, series, type) {
       text: title
     },
     legend: {
-      enabled: false
+      enabled: (type == 'percent' ? false : true)
     },
     credits: {
        enabled: false
@@ -327,12 +328,12 @@ function getHighchartData(title, labels, data) {
       min: 0
     },
     credits: {
-        enabled: false
+      enabled: false
     },
     plotOptions: {
       spline: {
         marker: {
-            enabled: true
+          enabled: true
         }
       }
     },

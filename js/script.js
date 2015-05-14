@@ -241,8 +241,10 @@ $(function() {
   getDataset();
   setInterval(function() {
     getDataset();
-    getClusterInfo();
   }, 10000);
+  setInterval(function() {
+    getClusterInfo();
+  }, 5000);
 })
 
 function openView(view) {

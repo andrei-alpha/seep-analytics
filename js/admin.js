@@ -119,7 +119,7 @@ function updateResourcesGraphs(data) {
       point.y = data['hosts'][host]['net_io'][i];
       point.color = (i == 0 ? '#7CB5EC' : '#FF7373')
       if (cnt == 0) {
-        series['net_io'].push({'name': (i == 0 ? 'bytes_send' : 'bytes_recv'), 'data': [point]});
+        series['net_io'].push({'name': (i == 0 ? 'network sends' : 'network recvs'), 'data': [point]});
       } else {
         series['net_io'][i]['data'].push(point);
       }
@@ -130,7 +130,7 @@ function updateResourcesGraphs(data) {
       point.y = data['hosts'][host]['disk_io'][i];
       point.color = (i == 0 ? '#7CB5EC' : '#FF7373')
       if (cnt == 0) {
-        series['disk_io'].push({'name': (i == 0 ? 'read_bytes' : 'write_bytes'), 'data': [point]});
+        series['disk_io'].push({'name': (i == 0 ? 'disk reads' : 'disk writes'), 'data': [point]});
       } else {
         series['disk_io'][i]['data'].push(point);
       }
@@ -147,7 +147,7 @@ function updateResourcesGraphs(data) {
       chart.series[i].setData(series['cpu'][i]['data']);
     }
   } else {
-    $('#cpu-bars-graph').highcharts(getBarsChartData(series['cpu'], categories, 'Nodes cpu utilization', '% percent cpu used'));
+    $('#cpu-bars-graph').highcharts(getBarsChartData(series['cpu'], categories, 'Nodes cpu(s) utilization', '% percent cpu used'));
   }
   chart = $('#cpu-area-graph').highcharts();
   if (chart == undefined) {
@@ -183,7 +183,7 @@ function updateResourcesGraphs(data) {
   }
   chart = $('#network-area-graph').highcharts();
   if (chart == undefined) {
-    $('#network-area-graph').highcharts(getAreaChartData('Cluster network utilization', 'network io per second', [{'name': 'send', 'data': []}, {'name': 'read', 'data': []}], 'rate'));
+    $('#network-area-graph').highcharts(getAreaChartData('Cluster network utilization', 'network io per second', [{'name': 'network sends', 'data': []}, {'name': 'network recvs', 'data': []}], 'rate'));
     chart = $('#network-area-graph').highcharts();
   }
   chart.series[0].addPoint([timestamp, data['overall']['net_io'][0]]);
@@ -200,7 +200,7 @@ function updateResourcesGraphs(data) {
   }
   chart = $('#disk-area-graph').highcharts();
   if (chart == undefined) {
-    $('#disk-area-graph').highcharts(getAreaChartData('Cluster disk utilization', 'disk io per second', [{'name': 'reads', 'data': []}, {'name': 'writes', 'data': []}], 'rate'));
+    $('#disk-area-graph').highcharts(getAreaChartData('Cluster disk utilization', 'disk io per second', [{'name': 'disk reads', 'data': []}, {'name': 'disk writes', 'data': []}], 'rate'));
     chart = $('#disk-area-graph').highcharts();
   }
   chart.series[0].addPoint([timestamp, data['overall']['disk_io'][0]]);

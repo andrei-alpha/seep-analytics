@@ -130,7 +130,7 @@ class ResourceThread:
     self.working = True
     while self.working:
       self.scan()
-      self.sleep(10)
+      self.sleep(5)
 
   def stop(self):
     print 'Stoping resource thread...'
