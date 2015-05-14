@@ -176,12 +176,132 @@ function getThroughputData(dataset, categories) {
   }
 }
 
+function getBarsChartData(dataset, categories, title, text, type) {
+  type = typeof type !== 'undefined' ? type : 'percent';
+  return {
+    chart: {
+      type: 'column',
+    },
+    title: {
+      text: title
+    },
+    legend: {
+      enabled: false
+    },
+    xAxis: {
+      categories: categories,
+      crosshair: true
+    },
+    yAxis: {
+      min: 0,
+      max: (type == 'percent' ? 100 : undefined),
+      title: {
+          text: text
+      },
+      labels: {
+        formatter: function () {
+          if (type == 'percent')
+            return this.value;
+          return bytesToSize(this.value);
+        }
+      }
+    },
+    credits: {
+        enabled: false
+    },
+    tooltip: {
+      shared: true,
+      formatter: function() {
+        var string = this.x + '<br/>';
+        for (var i = 0; i < this.points.length; ++i) {
+          var tooltipText = (type == 'percent' ? 'percent' : 'per second');
+          var value = (type == 'percent' ? parseInt(this.points[i].y) : bytesToSize(this.points[i].y))
+          string += '<b>' + this.points[i].series.name + '</b>: ' + value + ' ' + tooltipText + '<br/>';
+        }
+        return string;
+      }
+    },
+    plotOptions: {
+      column: {
+          pointPadding: 0.2,
+          borderWidth: 0
+      }
+    },
+    series: dataset
+  }
+}
+
+function bytesToSize(bytes) {
+  var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  if (bytes == 0) return '0 bytes';
+  var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+  return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+};
+
+function getAreaChartData(title, text, series, type) {
+  type = typeof type !== 'undefined' ? type : 'percent';
+  return {
+    chart: {
+      type: 'area',
+    },
+    colors: ['#7CB5EC', '#FF7373'],
+    title: {
+      text: title
+    },
+    legend: {
+      enabled: false
+    },
+    credits: {
+       enabled: false
+    },
+    yAxis: {
+      min: 0,
+      max: (type == 'percent' ? 100 : undefined),
+      title: {
+          text: text
+      },
+      labels: {
+        formatter: function () {
+          if (type == 'percent')
+            return this.value;
+          return bytesToSize(this.value);
+        }
+      }
+    },
+    xAxis: {
+      labels: {
+        formatter: function () {
+          return Highcharts.dateFormat('%H:%M', this.value) 
+        }
+      }
+    },
+    tooltip: {
+      shared: true,
+      formatter: function() {
+        var string = Highcharts.dateFormat('%H:%M:%S', this.x) + '<br/>';
+        for (var i = 0; i < this.points.length; ++i) {
+          var tooltipText = (type == 'percent' ? 'percent' : 'per second');
+          var value = (type == 'percent' ? parseInt(this.points[i].y) : bytesToSize(this.points[i].y));
+          string += '<b>' + this.points[i].series.name + '</b>: ' + value + ' ' + tooltipText + '<br/>';
+        }
+        return string;
+      }
+    },
+    plotOptions: {
+      area: {
+        stacking: 'normal'
+      },
+      column: {
+        pointPadding: 0.2,
+        borderWidth: 0
+      }
+    },
+    series: series
+  }
+}
+
 function getHighchartData(title, labels, data) {
   return {
-    /*chart: {
-      type: 'pline',
-      zoomType: 'x'
-    },*/
     colors: ['rgba(299,115,115,1)'],
     title: {
       align: 'left',

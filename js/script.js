@@ -53,11 +53,6 @@ function dataSelect(title, labels, dataset) {
 
 function populateGraph(id, title, data) {
   $('#' + id).highcharts(getHighchartData(title, data[0], data[1]));
-
-  /*var container = $('#' + id).get()[0].getContext("2d");
-  var chartData = getChartData(data, labels)
-  var lineChart = new Chart(container).Line(chartData, {animation: false, scaleBeginAtZero: true});
-  lineChartIds[id] = lineChart;*/
 }
 
 function updateGraph(id, title, data) {
@@ -68,31 +63,6 @@ function updateGraph(id, title, data) {
   }
   chart.series[0].setData(data[1]);
   chart.xAxis[0].setCategories(data[0]);
-  /*
-  while(chart.series[0].data.length && chart.xAxis[0].categories[0] != data[0][0] || 
-    (chart.series[0].data.length > 1 && chart.xAxis[0].categories[1] != data[0][1])) {
-      chart.series[0].data[0].remove();
-  }
-
-  /*
-
-  for (var i = chart.series[0].data.length; i < data[0].length; ++i) {
-    chart.series[0].addPoint(data[0][i], data[1][i]);
-  }
-  
-  var needsUpdate = false;
-  for (var i = 0; i < data[0].length; ++i) {
-    if (chart.series[0].data[i].x != data[0][i] || chart.series[0].data[i].y != data[1][i]) {
-      needsUpdate = true;
-    }
-  }
-
-  newData = [];
-  for (var i = 0; i < data[0].length; ++i) {
-    newData.push({'x': data[0][i], 'y': data[1][i]});
-  }
-  if (needsUpdate == true)
-    chart.series[0].setData(newData);*/
 }
 
 function getDataset() {
@@ -137,6 +107,11 @@ function updateStatistics(dataset, shallowUpdate) {
   }
 }
 
+function colorGradient(value) {
+  var colors = ['#3CBF21', '#82C121', '#C3BB20', '#C5741F', '#C72A1F'];
+  return colors[Math.min(Math.max(parseInt(value / 20), 0), 4)];
+}
+
 function updateGraphs(dataset, graphType) {
   var shallowUpdate = true;
   var runningApps = 0;
@@ -150,7 +125,24 @@ function updateGraphs(dataset, graphType) {
       var tableTemplate = $('#infoTableTemplate').html();
       var statsTemplateHtml = statsTemplate.format('stats-graph', tableTemplate);
       $('#graphs > tbody:last').append(statsTemplateHtml);
+      setTimeout(function() {getClusterInfo(); }, 100);
     }
+  }
+
+  if (graphType == 'resources') {
+    if (!shallowUpdate) {
+      var resourcesTemplate = $('#resourcesRowTemplate').html();
+      var resourcesTemplateHtml = resourcesTemplate.format('cpu-bars-graph', 'cpu-area-graph');
+      $('#graphs > tbody:last').append(resourcesTemplateHtml);
+      resourcesTemplateHtml = resourcesTemplate.format('ram-bars-graph', 'ram-area-graph');
+      $('#graphs > tbody:last').append(resourcesTemplateHtml);
+      resourcesTemplateHtml = resourcesTemplate.format('network-bars-graph', 'network-area-graph');
+      $('#graphs > tbody:last').append(resourcesTemplateHtml);
+      resourcesTemplateHtml = resourcesTemplate.format('disk-bars-graph', 'disk-area-graph');
+      $('#graphs > tbody:last').append(resourcesTemplateHtml);
+      getClusterInfo();
+    }
+    return;
   }
 
   // Load the apps / containers in reverse so the newest one is at top
@@ -249,13 +241,12 @@ function updateGraphs(dataset, graphType) {
 
 $(function() {
   getDataset();
-  askClusterInfo();
   setInterval(function() {
     getDataset();
   }, 10000);
   setInterval(function() {
-    askClusterInfo();
-  }, 10000)
+    getClusterInfo();
+  }, 5000)
 })
 
 function openView(view) {
@@ -267,6 +258,8 @@ function openView(view) {
     openClusterView();
   else if(view.contains('admin'))
     openAdminView();
+  else if(view.contains('resources'))
+    openResourcesView();
   else // Default view is apps
     openAppsView();
 }
@@ -305,6 +298,15 @@ function openAdminView() {
   previousView = currentView;
   currentView = 'admin';
   getAvailableOptions();
+}
+
+function openResourcesView() {
+  window.history.pushState({}, "", "/resources");
+
+  $('#admin-console').css("display", "none");
+  $('#graphs').css("display", "block");
+  currentView = 'resources';
+  updateGraphs(globalDataset[currentView], currentView);
 }
 
 //first, checks if it isn't implemented yet

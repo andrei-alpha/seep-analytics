@@ -34,6 +34,7 @@
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
             <li><a href="#" onclick="openView('cluster')">Cluster</a></li>
+            <li><a href="#" onclick="openView('resources')">Resources</a></li>
             <li><a href="#" onclick="openView('apps')">Applications</a></li>
             <li><a href="#" onclick="openView('containers')">Containers</a></li>
             <li><a href="/logs">Logs</a></li>
@@ -176,6 +177,7 @@
         <td></td>
       </tr>
       <tr>
+        <td>{1}</td>
         <td colspan="2"><div id="{0}" height="250"></div></td>
         <td>
           <table>
@@ -183,7 +185,18 @@
             <tr><td><div id="memory-graph" style="width: 300px; height: 190px;"></div></td></tr>
           </table>
         </td>
-        <td>{1}</td>
+      </tr>
+    </script>
+
+    <!-- Cpu row template -->
+    <script type="text/template" id="resourcesRowTemplate">
+      <tr>
+        <td colspan="2">
+          <div id="{0}" style="width: 600px; height: 300px;"></div>
+        </td>
+        <td colspan="2">
+          <div id="{1}" style="width: 600px; height: 300px;"></div>
+        </td>
       </tr>
     </script>
 

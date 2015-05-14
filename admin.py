@@ -13,7 +13,7 @@ class Globals:
     expectedTime = None
     baseProgress = None
     allocatedPercentage = None
-    clusterInfo = None
+    clusterInfo = {}
     timeEstimations = {
         'Stopping all seep queries...': 2,
         'Fetching origin...': 1,
@@ -244,34 +244,23 @@ def clearHadoopLogs():
     updateTask('Deleting Hadoop Logs - Done')
     updateProgress(100)
 
-def clusterInfo():
-    cInfo = {}
-    for host in hosts:
-        sendRequest(host, '/info', {'cwd': seep_root + '/deploy'}, "post")
-    for host in hosts:
-        res = sendRequest(host, '/info-status', None, "get")
-        if not res:
-            continue
-        info = res.json()
-        if not cInfo:
-            cInfo = info
-        elif info:
-            cInfo = {
-                'memory': [sum(x) for x in zip(cInfo['memory'], info['memory'])],
-                'logs': [sum(x) for x in zip(cInfo['logs'], info['logs'])],
-                'cpu': [sum(x) for x in zip(cInfo['cpu'], info['cpu'])]
-            }
-    if cInfo:
-        Globals.clusterInfo = {
-            'total_mem': cInfo['memory'][0],
-            'total_cpus': len(hosts) * 4,
-            'cpu_usage': float(cInfo['cpu'][0]) / len(hosts),
-            'mem_usage': float(cInfo['memory'][1]) / len(hosts),
-            'kafka_logs': cInfo['logs'][0] * 1024,
-            'hadoop_logs': cInfo['logs'][1] * 1024,
-        }
-    else:
-        Globals.clusterInfo = {'status': 'failed'}
+def updateResourceReport(data):
+    host = data['host']
+    cInfo = Globals.clusterInfo
+    if not 'hosts' in cInfo:
+        cInfo['hosts'] = {}
+    cInfo['hosts'][host] = data
+    cInfo['hosts'][host]['avg_cpu'] = float(sum(cInfo['hosts'][host]['cpu'])) / len(cInfo['hosts'][host]['cpu'])
+    cInfo['overall'] = {
+        'total_mem': sum([cInfo['hosts'][host]['memory'][0] for host in cInfo['hosts']]),
+        'total_cpus': sum([len(cInfo['hosts'][host]['cpu']) for host in cInfo['hosts']]),
+        'cpu_usage': float(sum([cInfo['hosts'][host]['avg_cpu'] for host in cInfo['hosts']])) / len(cInfo['hosts']),
+        'mem_usage': float(sum([cInfo['hosts'][host]['memory'][1] for host in cInfo['hosts']])) / len(cInfo['hosts']),
+        'disk_io': [sum([cInfo['hosts'][host]['disk_io'][0] for host in cInfo['hosts']]), sum([cInfo['hosts'][host]['disk_io'][1] for host in cInfo['hosts']])],
+        'net_io': [sum([cInfo['hosts'][host]['net_io'][0] for host in cInfo['hosts']]), sum([cInfo['hosts'][host]['net_io'][1] for host in cInfo['hosts']])],
+        'kafka_logs': sum([cInfo['hosts'][host]['logs'][0] for host in cInfo['hosts']]) * 1024,
+        'hadoop_logs': sum([cInfo['hosts'][host]['logs'][1] for host in cInfo['hosts']]) * 1024,
+    }
 
 def reset():
     updateTask('')

@@ -267,8 +267,9 @@ def event():
   event = request.forms.get('event')
   path = request.forms.get('path')
   data = request.forms.get('data')
-  appId = getAppId(path)
-  containerId = getContainerId(path)
+
+  appId = getAppId(path) if path else None
+  containerId = getContainerId(path) if path else None
 
   if event == 'created':
     parent = ''
@@ -290,7 +291,6 @@ def event():
       parent = root
       root = root + '/' + dirs[i] 
 
-
   if event == 'new line':
     if not path in files:
       #print 'add:', path
@@ -306,6 +306,9 @@ def event():
       fout.write(data)
     update(appId, containerId, data)
 
+  if event == 'resource report':
+    admin.updateResourceReport(json.loads(data))
+
 @app.route('/backend/dataset')
 def getDataset():
   response.content_type = 'application/json'
@@ -313,6 +316,7 @@ def getDataset():
 
 @app.route('/')
 @app.route('/containers')
+@app.route('/resources')
 @app.route('/apps')
 @app.route('/cluster')
 @app.route('/admin')
@@ -326,24 +330,6 @@ def server_static(filepath):
 @app.route('/command/status')
 def server_command_status():
   return admin.status()
-
-@app.route('/command/get_info/status')
-def server_get_info_status():
-  if not admin.Globals.clusterInfo:
-      return 'pending'
-  response.content_type = 'application/json'
-  clusterInfo = copy.deepcopy(admin.Globals.clusterInfo)
-  admin.Globals.clusterInfo = None
-  clusterInfo['total_events'] = totalEventsToDate
-  if GENERAL in dataset['cluster'] and 'data' in dataset['cluster'][GENERAL] and len(dataset['cluster'][GENERAL]['data']):
-    clusterInfo['current_rate'] = dataset['cluster'][GENERAL]['data'][-1]['1-minute rate']
-  return clusterInfo
-
-@app.route('/command/get_info', method='post')
-def server_get_info():
-  t = threading.Thread(target=admin.clusterInfo())
-  t.deamon = True
-  t.start()
 
 @app.route('/command/<command>', method='post')
 def server_command(command):
@@ -370,6 +356,17 @@ def server_command(command):
 @app.route('/options')
 def server_options():
   return json.dumps(admin.getAvailableOptions())
+
+@app.route('/command/resource_report')
+def server_get_info():
+  if not admin.Globals.clusterInfo:
+      return 'pending'
+  clusterInfo = copy.deepcopy(admin.Globals.clusterInfo)
+  clusterInfo['overall']['total_events'] = totalEventsToDate
+  if GENERAL in dataset['cluster'] and 'data' in dataset['cluster'][GENERAL] and len(dataset['cluster'][GENERAL]['data']):
+    clusterInfo['overall']['current_rate'] = dataset['cluster'][GENERAL]['data'][-1]['1-minute rate']
+  response.content_type = 'application/json'
+  return clusterInfo
 
 @app.route("/<url:re:.+>")
 def logs(url):
