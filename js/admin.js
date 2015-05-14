@@ -83,10 +83,17 @@ function updateResourcesGraphs(data) {
   var series = {'cpu': [], 'ram': [], 'net_io': [], 'disk_io': []};
   var categories = [];
 
+  var keys = new Array();
+  for (var k in data['hosts']) {
+    keys.push(k);
+  }
+  keys = keys.sort();
+
   var cnt = 0;
-  for (host in data['hosts']) {
-    categories.push(host);
-    
+  for (var idk = 0; idk < keys.length; ++idk) {
+    host = keys[idk];
+
+    categories.push(host);    
     for (var i = 0; i < data['hosts'][host]['cpu'].length; ++i) {
       point = {};
       point.y = data['hosts'][host]['cpu'][i];
@@ -189,7 +196,7 @@ function updateResourcesGraphs(data) {
       chart.series[i].setData(series['disk_io'][i]['data']);
     }
   } else {
-    $('#disk-bars-graph').highcharts(getBarsChartData(series['disk_io'], categories, 'Nodes disk utilization', 'disk per io second', 'rate'));
+    $('#disk-bars-graph').highcharts(getBarsChartData(series['disk_io'], categories, 'Nodes disk utilization', 'disk io per second', 'rate'));
   }
   chart = $('#disk-area-graph').highcharts();
   if (chart == undefined) {
@@ -206,8 +213,10 @@ function getClusterInfo() {
     type: "get",
     success: function(response) {
       if (response != 'pending') {
-        updateAdminTable(response['overall']);
-        updateResourcesGraphs(response);
+        if (currentView == 'cluster')
+          updateAdminTable(response['overall']);
+        if (currentView == 'resources')
+          updateResourcesGraphs(response);
       }
     }
   });

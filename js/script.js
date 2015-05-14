@@ -16,7 +16,6 @@ var dataFilters = {
 var graphTitles = ['1-minute rate', '5-minute rate', '15-minute rate', 'mean rate',
   '1-minute rate-avg', '5-minute rate-avg', '15-minute rate-avg', 'mean rate-avg',
   '1-minute rate-fairness', '5-minute rate-fairness', '15-minute rate-fairness', 'mean rate-fairness'];
-var lineChartIds = {}
 
 /*
 Performs data aggregation by the given interval
@@ -35,7 +34,6 @@ function dataSelect(title, labels, dataset) {
   var start = 0;
   for (var i = 0; i < labels.length; ++i) {
     if (previousTimestamp != -1 && labels[i] - previousTimestamp > 5 * 60 * 1000 /* 5 minutes */ ) {
-      console.log("set start to " + i + " this: " + labels[i] + " prev: " + previousTimestamp);
       start = i;
     }
     previousTimestamp = labels[i];
@@ -243,70 +241,27 @@ $(function() {
   getDataset();
   setInterval(function() {
     getDataset();
-  }, 10000);
-  setInterval(function() {
     getClusterInfo();
-  }, 5000)
+  }, 10000);
 })
 
 function openView(view) {
-  if (view.contains('containers'))
-    openContainersView();
-  else if(view.contains('apps'))
-    openAppsView();
-  else if(view.contains('cluster'))
-    openClusterView();
-  else if(view.contains('admin'))
-    openAdminView();
-  else if(view.contains('resources'))
-    openResourcesView();
-  else // Default view is apps
-    openAppsView();
-}
-
-function openClusterView() {
-  window.history.pushState({}, "", "/cluster");
-
-  $('#admin-console').css("display", "none");
-  $('#graphs').css("display", "block");
-  currentView = 'cluster';
-  updateGraphs(globalDataset[currentView], currentView);
-}
-
-function openAppsView() {
-  window.history.pushState({}, "", "/apps");
-
-  $('#admin-console').css("display", "none");
-  $('#graphs').css("display", "block");
-  currentView = 'apps';
-  updateGraphs(globalDataset[currentView], currentView);
-}
-
-function openContainersView() {
-  window.history.pushState({}, "", "/containers");
-  $('#admin-console').css("display", "none");
-  $('#graphs').css("display", "block");
-  currentView = 'containers';
-  updateGraphs(globalDataset[currentView], currentView);
-}
-
-function openAdminView() {
-  window.history.pushState({}, "", "/admin");
-
-  $('#graphs').css("display", "none");
-  $('#admin-console').css("display", "block");
+  view = view.replace(/[^a-zA-Z]/g, "");
+  var views = ['admin', 'cluster', 'resources', 'apps', 'containers'];
+  view = (views.indexOf(view) != -1 ? view : 'apps');
+  window.history.pushState({}, '', '/' + view);
   previousView = currentView;
-  currentView = 'admin';
-  getAvailableOptions();
-}
+  currentView = view;
 
-function openResourcesView() {
-  window.history.pushState({}, "", "/resources");
-
-  $('#admin-console').css("display", "none");
-  $('#graphs').css("display", "block");
-  currentView = 'resources';
-  updateGraphs(globalDataset[currentView], currentView);
+  if (currentView == 'admin') {
+    $('#graphs').css("display", "none");
+    $('#admin-console').css("display", "block");
+    getAvailableOptions();
+  } else {
+    $('#admin-console').css("display", "none");
+    $('#graphs').css("display", "block");
+    updateGraphs(globalDataset[currentView], currentView);
+  }
 }
 
 //first, checks if it isn't implemented yet
