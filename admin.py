@@ -211,7 +211,8 @@ def submitQuery(queryName, deploymentSize):
     for i in xrange(deploymentSize):
         baseYarnWorkerPort += 5
         baseYarnMasterPort += 5
-        process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerPort), str(baseYarnMasterPort)], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        serverHost = 'http://' + os.uname()[1] + ':7007'
+        process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerPort), str(baseYarnMasterPort), serverHost], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while steps < 5 * (i + 1):
             out = unblockingRead(process)
             steps += len(re.findall('SeepYarnAppSubmissionClient', out))
@@ -244,13 +245,19 @@ def clearHadoopLogs():
     updateTask('Deleting Hadoop Logs - Done')
     updateProgress(100)
 
+def computeBusyScore(data):
+    return (data['avg_cpu'] / 10) + data['allocations']
+
 def updateResourceReport(data):
     host = data['host']
     cInfo = Globals.clusterInfo
     if not 'hosts' in cInfo:
         cInfo['hosts'] = {}
+    data['allocations'] = (cInfo['hosts'][host]['allocations'] if host in cInfo['hosts'] else 0)
+    data['avg_cpu'] = float(sum(data['cpu'])) / len(data['cpu'])
+    data['score'] = computeBusyScore(data)
+    
     cInfo['hosts'][host] = data
-    cInfo['hosts'][host]['avg_cpu'] = float(sum(cInfo['hosts'][host]['cpu'])) / len(cInfo['hosts'][host]['cpu'])
     cInfo['overall'] = {
         'total_mem': sum([cInfo['hosts'][host]['memory'][0] for host in cInfo['hosts']]),
         'total_cpus': sum([len(cInfo['hosts'][host]['cpu']) for host in cInfo['hosts']]),
@@ -261,6 +268,26 @@ def updateResourceReport(data):
         'kafka_logs': sum([cInfo['hosts'][host]['logs'][0] for host in cInfo['hosts']]) * 1024,
         'hadoop_logs': sum([cInfo['hosts'][host]['logs'][1] for host in cInfo['hosts']]) * 1024,
     }
+
+def getPreferredNode():
+    preferredNodes = []
+    cInfo = Globals.clusterInfo['hosts']
+    if len(Globals.clusterInfo['hosts']) == 0:
+        return '*'
+
+    for host in cInfo:
+        # If we have at least 3 hosts don't allocate on the current node
+        if len(cInfo) > 3 and os.uname()[1] in host:
+            continue
+        preferredNodes.append([cInfo[host]['score'], host])
+    preferredNodes.sort()
+    
+    node = preferredNodes[0][1]
+    # Assume we will allocate a container already
+    cInfo[node]['allocations'] += 1
+    cInfo[node]['score'] = computeBusyScore(cInfo[node])
+    
+    return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
 
 def reset():
     updateTask('')

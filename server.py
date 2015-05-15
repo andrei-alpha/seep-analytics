@@ -368,6 +368,10 @@ def server_get_info():
   response.content_type = 'application/json'
   return clusterInfo
 
+@app.route('/scheduler/host')
+def scheduler_host():
+  return admin.getPreferredNode()
+
 @app.route("/<url:re:.+>")
 def logs(url):
   if url.endswith('/'):
