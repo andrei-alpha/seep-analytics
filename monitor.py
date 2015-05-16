@@ -99,6 +99,43 @@ class ResourceThread:
   def args(self):
     return (self.host, self.seep_root)
 
+  def scanWorkers(self):
+    workers = []
+    pids = []
+    for proc in psutil.process_iter():
+      if proc.name() == 'java':
+        pids.append(proc.pid)
+
+    for pid in pids:
+      proc = psutil.Process(pid)
+      try:
+        pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent', 'cmdline'])
+      except psutil.NoSuchProcess:
+        pass
+      else:
+        cmdline = pinfo['cmdline']
+        if not cmdline or len(cmdline) == 0:
+          continue
+
+        cntWorker = sum([len(re.findall('seep-worker', x)) for x in cmdline])
+      
+        # We can be sure it's a worker with high confidence
+        if cntWorker > 20:
+          pinfo['name'] = 'Seep-Worker'
+        else:
+          continue
+
+        for i in xrange(len(cmdline)):
+          if cmdline[i] == '--data.port':
+            pinfo['data.port'] = cmdline[i+1]
+          elif cmdline[i] == '--master.ip':
+            pinfo['master.ip'] = cmdline[i+1]
+          elif cmdline[i] == '--master.scheduler.port':
+            pinfo['master.scheduler.port'] = cmdline[i+1]
+        del pinfo['cmdline']
+        workers.append(pinfo)
+    return workers
+
   def scan(self):
     mem = psutil.phymem_usage()
     self.info['memory'] = [mem.total, mem.percent]
@@ -121,6 +158,9 @@ class ResourceThread:
       self.info['net_io'] = [(net.bytes_sent - self.bytes_sent) / 10, (net.bytes_recv - self.bytes_recv) / 10]
     self.bytes_sent = net.bytes_sent
     self.bytes_recv = net.bytes_recv
+
+    # Get resource information for each seep worker
+    self.info['workers'] = self.scanWorkers()
 
     # Get other malicious data
     try: 
