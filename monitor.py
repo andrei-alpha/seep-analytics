@@ -95,6 +95,7 @@ class ResourceThread:
     self.info = {}
     self.host = host
     self.seep_root = seep_root
+    self.procs = set()
 
   def args(self):
     return (self.host, self.seep_root)
@@ -103,13 +104,13 @@ class ResourceThread:
     workers = []
     pids = []
     for proc in psutil.process_iter():
-      if proc.name() == 'java':
+      if proc.name() == 'java' and not proc in self.procs:
         pids.append(proc.pid)
 
     for pid in pids:
       proc = psutil.Process(pid)
       try:
-        pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent', 'cmdline'])
+        pinfo = proc.as_dict(attrs=['cmdline'])
       except psutil.NoSuchProcess:
         pass
       else:
@@ -118,13 +119,18 @@ class ResourceThread:
           continue
 
         cntWorker = sum([len(re.findall('seep-worker', x)) for x in cmdline])
-      
         # We can be sure it's a worker with high confidence
         if cntWorker > 20:
-          pinfo['name'] = 'Seep-Worker'
-        else:
-          continue
+          self.procs.add(proc)
 
+    for proc in self.procs:
+      try:
+        pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent', 'cmdline'])
+      except psutil.NoSuchProcess:
+        self.procs.remove(proc)
+      else:
+        cmdline = pinfo['cmdline']
+        pinfo['name'] = 'Seep-Worker'
         for i in xrange(len(cmdline)):
           if cmdline[i] == '--data.port':
             pinfo['data.port'] = cmdline[i+1]

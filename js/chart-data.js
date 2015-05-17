@@ -301,6 +301,75 @@ function getAreaChartData(title, text, series, type) {
   }
 }
 
+function getSparkLineData(title, text, series) {
+  return {
+    chart:{
+      //margin:[0, 0, 0, 0],
+      type: 'area',
+      backgroundColor: 'transparent',
+      plotBackgroundColor: 'white'
+    },
+    colors: ['#393939'],
+    title:{
+      text:''
+    },
+    credits:{
+      enabled:false
+    },
+    xAxis:{
+      labels:{
+        enabled:false
+      }
+    },
+    yAxis:{
+      min: 0,
+      max: 100,
+      maxPadding:0,
+      minPadding:0,
+      endOnTick:false,
+      legend: false,
+      gridLineWidth: .5,
+      minorGridLineColor: '#F0F0F0',
+      minorGridLineDashStyle: 'longdash',
+      minorTickInterval: 'auto',
+      title: {
+        text: null
+      }
+    },
+    legend:{
+      enabled:false
+    },
+    tooltip:{
+      enabled:false
+    },
+    plotOptions:{
+      series:{
+        enableMouseTracking:false,
+        lineWidth:1,
+        shadow:false,
+        states:{
+          hover:{
+            lineWidth:1
+          }
+        },
+        marker:{
+          //enabled:false,
+          radius:0,
+          states:{
+            hover:{
+                radius:2
+            }
+          }
+        }
+      }
+    },
+    series: series,
+    exporting: {
+      enabled: false
+    }
+  }
+}
+
 function getHighchartData(title, labels, data) {
   return {
     colors: ['rgba(299,115,115,1)'],

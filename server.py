@@ -23,6 +23,7 @@ totalEventsToDate = 0
 dataset['containers'] = {}
 dataset['apps'] = {}
 dataset['cluster'] = {}
+dataPortToContainerIdMap = {}
 
 EVENTS_PER_SECOND = 'events per second'
 LAST_DATAPOINTS = 40
@@ -213,9 +214,15 @@ def update(appId, contId, data):
 
   # Get container type
   ctype = re.search('(?<=Configuring local task:\s)[A-Za-z]+(?=@)', data)
-
   if ctype:
     dataset['containers'][contId]['type'] = ctype.group()
+
+  # Get container data.port
+  data_port = re.search('(?<=data\.port\s=\s)[0-9][0-9][0-9][0-9]+', data)
+  if data_port:
+    dataset['containers'][contId]['data.port'] = data_port.group()
+    dataPortToContainerIdMap[str(data_port.group())] = contId
+
   # Skip Source containers updates
   if 'type' in  dataset['containers'][contId] and dataset['containers'][contId]['type'] == 'Source':
     return
@@ -307,7 +314,11 @@ def event():
     update(appId, containerId, data)
 
   if event == 'resource report':
-    admin.updateResourceReport(json.loads(data))
+    data = json.loads(data)
+    for worker in data['workers']:
+      if 'data.port' in worker and str(worker['data.port']) in dataPortToContainerIdMap:
+        worker['type'] = dataset['containers'][dataPortToContainerIdMap[worker['data.port']]]['type']
+    admin.updateResourceReport(data)
 
 @app.route('/backend/dataset')
 def getDataset():

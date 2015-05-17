@@ -207,6 +207,63 @@ function updateResourcesGraphs(data) {
   chart.series[1].addPoint([timestamp, data['overall']['disk_io'][1]]);
 }
 
+function updateOperator(id, data) {
+  var chart = $('#' + id + '-chart').highcharts();
+  chart.series[0].addPoint(data['cpu_percent']);
+  $('#' + id + '-cm').text('cpu: {0}% ram: {1}%'.format(data['cpu_percent'], parseFloat(data['memory_percent']).toFixed(2)));
+  $('#' + id + '-pid').text('pid: {0}'.format(data['pid']));
+  $('#' + id).css('background-color', colorGradientOperator(data['cpu_percent']));
+}
+
+function colorGradientOperator(value) {
+  var colors = ['#BCF0B6', '#F5F55D', '#F08D3C', '#E85A5A'];
+  return colors[Math.min(Math.max(parseInt(value / 10), 0), 3)];
+}
+
+function updateOperatorsTable(hosts) {
+  for (host in hosts) {
+    hostName = host.replace(".", "-")
+    if ($('#operators-table-' + hostName).length == 0) {
+      var template = $('#operatorsHostTemplate').html();
+      var html = template.format(hostName);
+      $('#operators-tab').append(html);
+    }
+
+    if (!(host in addedOperatorsCountPerHost)) {
+      addedOperatorsCountPerHost[host] = 0;
+    }
+
+    for (var i = 0; i < hosts[host]['workers'].length; ++i) {
+      var worker = hosts[host]['workers'][i];
+
+      var workerId = hostName + '-W' + worker['data.port'];
+      if ($('#' + workerId).length == 0) {
+
+        // Add a new row to the table if 6 items were placed
+        if (addedOperatorsCountPerHost[host] % 6 == 0) {
+          var x = addedOperatorsCountPerHost[host];
+          var template = $('#operatorsTableRowTemplate').html();
+          var html = template.format(hostName, x, x+1, x+2, x+3, x+4, x+5);
+          $('#operators-table-' + hostName + ' > tbody:last').append(html);
+        }
+
+        var id = 'owt-' + hostName + '-' + addedOperatorsCountPerHost[host];
+        var template = $('#operatorTemplate').html();
+        var icon = '<span class="glyphicon glyphicon-cog" aria-hidden="true"></span>'
+        var title = icon + (worker['type'] != undefined ? worker['type'] : 'Generic') + ' Operator ' + worker['data.port']
+        var html = template.format(workerId, title, worker['cpu_percent'], parseFloat(worker['memory_percent']).toFixed(2), worker['pid'])
+        $('#' + id).html(html);
+        $('#' + workerId).css('background-color', colorGradientOperator(worker['cpu_percent']));
+        $('#' + workerId + '-chart').highcharts( getSparkLineData('cpu', 'x', [{'name': 'cpu', 'data': [worker['cpu_percent']]}]) );
+
+        addedOperatorsCountPerHost[host] += 1;
+      } else {
+        updateOperator(workerId, worker);
+      }
+    }
+  }
+}
+
 function getClusterInfo() {
   $.ajax({
     url: "/command/resource_report",
@@ -215,8 +272,10 @@ function getClusterInfo() {
       if (response != 'pending') {
         if (currentView == 'cluster')
           updateAdminTable(response['overall']);
-        if (currentView == 'resources')
-          updateResourcesGraphs(response);
+        if (currentView == 'resources') {
+          updateResourcesGraphs(response)
+          updateOperatorsTable(response['hosts']);
+        }
       }
     }
   });

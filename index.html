@@ -48,7 +48,20 @@
         <h1>Wombat Cluster Performance</h1>
         <p class="lead">Cluster performance analytics and deployment tools for SEEP jobs running on YARN with Kafka.</p>
       </div>
-      <table id="graphs"><tbody></tbody></table>
+
+      <!-- Nav tabs -->
+      <ul id="nav-tabs" class="nav nav-tabs" role="tablist">
+        <li role="presentation" class="active"><a href="#resources-tab" aria-controls="resources-tab" role="tab" data-toggle="tab">Resources</a></li>
+        <li role="presentation"><a href="#operators-tab" aria-controls="operators-tab" role="tab" data-toggle="tab">Operators</a></li>
+      </ul>
+
+      <!-- Tab panes -->
+      <div class="tab-content">
+        <div role="tabpanel" class="tab-pane active" id="resources-tab">
+          <table id="graphs"><tbody></tbody></table>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="operators-tab"></div>
+      </div>
 
       <div id="admin-console">
         <div class="row">
@@ -172,11 +185,6 @@
     <!-- Cluster statistic template -->
     <script type="text/template" id="statisticsTemplate">
       <tr>
-        <td colspan="2">Statistics</td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
         <td>{1}</td>
         <td colspan="2"><div id="{0}" height="250"></div></td>
         <td>
@@ -198,6 +206,39 @@
           <div id="{1}" style="width: 600px; height: 300px;"></div>
         </td>
       </tr>
+    </script>
+
+    <!-- Operator div template -->
+    <script type="text/template" id="operatorTemplate">
+      <div id="{0}" class="operator" style="width: 210px; height: 160px;">
+        <h5>{1}</h5>
+        <p id="{0}-pid" class="vertical-text">pid: {4}</p>
+        <div id="{0}-chart" style="margin-left: 15px; margin-top: -30px; width: 190px; height: 100px;"></div>
+        <p id="{0}-cm" style="float: right;">cpu: {2}% ram: {3}%</p>
+      </div>
+    </script>
+
+    <!-- Host operators table row -->
+    <script type="text/template" id="operatorsTableRowTemplate">
+      <tr>
+        <td id="owt-{0}-{1}"></td>
+        <td id="owt-{0}-{2}"></td>
+        <td id="owt-{0}-{3}"></td>
+        <td id="owt-{0}-{4}"></td>
+        <td id="owt-{0}-{5}"></td>
+        <td id="owt-{0}-{6}"></td>
+      </tr>
+    </script>
+
+    <!-- Host operators table template -->
+    <script type="text/template" id="operatorsHostTemplate">
+      <table id="operators-table-{0}">
+        <thead>
+          <tr><td colspan="6"><h3>{0}</h3></td></tr>
+        </thead>
+        <tbody>
+        </tbody
+      </table>
     </script>
 
     <!-- Bootstrap core JavaScript

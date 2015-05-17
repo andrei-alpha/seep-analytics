@@ -16,6 +16,7 @@ var dataFilters = {
 var graphTitles = ['1-minute rate', '5-minute rate', '15-minute rate', 'mean rate',
   '1-minute rate-avg', '5-minute rate-avg', '15-minute rate-avg', 'mean rate-avg',
   '1-minute rate-fairness', '5-minute rate-fairness', '15-minute rate-fairness', 'mean rate-fairness'];
+var addedOperatorsCountPerHost = {};
 
 /*
 Performs data aggregation by the given interval
@@ -59,8 +60,18 @@ function updateGraph(id, title, data) {
   if (chart == undefined || chart.series[0].data.length == 0) {
     populateGraph(id, title, data);
   }
-  chart.series[0].setData(data[1]);
-  chart.xAxis[0].setCategories(data[0]);
+ 
+  var needsUpdate = false;
+  for (var i = 0; i < chart.series[0].data.length; ++i) {
+    if (chart.series[0].data[i].y != data[1][i] || chart.xAxis[0].categories[i] != data[0][i]) {
+      needsUpdate = true;
+    }
+  }
+
+  if (needsUpdate) {
+    chart.series[0].setData(data[1]);
+    chart.xAxis[0].setCategories(data[0]);
+  }
 }
 
 function getDataset() {
@@ -157,6 +168,7 @@ function updateGraphs(dataset, graphType) {
     }
   }
 
+  var countGraphs = 0;
   for (var kind = keys.length - 1; kind >= 0; --kind) {
     var key = keys[kind];
     var item = dataset[key];
@@ -229,10 +241,14 @@ function updateGraphs(dataset, graphType) {
     }
 
     for (var i = 0; i < ids.length; ++i) {
-      if (doShallowPopulate)
+      if (doShallowPopulate) 
         updateGraph(ids[i], titles[i], dataSelect(titles[i], labels, data[titles[i]]));
-      else
-        populateGraph(ids[i], titles[i], dataSelect(titles[i], labels, data[titles[i]]));
+      else {
+        // Slow function. don't block the browser
+        setTimeout(function(args) {
+          populateGraph(args[0], args[1], args[2]);
+        }, ++countGraphs * 40, [ids[i], titles[i], dataSelect(titles[i], labels, data[titles[i]])]);
+      }
     }
   }
 }
@@ -254,6 +270,15 @@ function openView(view) {
   window.history.pushState({}, '', '/' + view);
   previousView = currentView;
   currentView = view;
+
+  if (currentView == "resources") {
+    $('#nav-tabs').css("display", "block");
+  } else {
+    addedOperatorsCountPerHost = {};
+    $('#operators-tab').html('');
+    $('.nav-tabs a[href="#resources-tab"]').tab('show');
+    $('#nav-tabs').css("display", "none");
+  }
 
   if (currentView == 'admin') {
     $('#graphs').css("display", "none");
