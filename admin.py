@@ -29,8 +29,10 @@ analytics_root = None
 hosts_names = None
 hosts = None
 
-baseYarnWorkerPort = 4500
-baseYarnMasterPort = 6000
+
+baseYarnWorkerMasterPort = 4500
+baseYarnWorkerDataPort = 6000
+baseYarnSchedulerPort = 3500
 
 def updateProgress(val, resetVal=False):
     if resetVal:
@@ -201,7 +203,7 @@ def unblockingRead(proc, retVal=''):
         return proc.communicate()[0]
 
 def submitQuery(queryName, deploymentSize):
-    global baseYarnWorkerPort, baseYarnMasterPort
+    global baseYarnWorkerMasterPort, baseYarnWorkerDataPort, baseYarnSchedulerPort
     updateTask('Deploy ' + str(deploymentSize) + ' seep queries...', 100)
     updateProgress(0, True)
 
@@ -209,10 +211,11 @@ def submitQuery(queryName, deploymentSize):
     totalSteps = deploymentSize * 5
     steps = 0
     for i in xrange(deploymentSize):
-        baseYarnWorkerPort += 5
-        baseYarnMasterPort += 5
+        baseYarnWorkerMasterPort += 5
+        baseYarnWorkerDataPort += 5
+        baseYarnSchedulerPort += 1
         serverHost = 'http://' + os.uname()[1] + ':7007'
-        process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerPort), str(baseYarnMasterPort), serverHost], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerMasterPort), str(baseYarnWorkerDataPort), str(baseYarnSchedulerPort), serverHost], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while steps < 5 * (i + 1):
             out = unblockingRead(process)
             steps += len(re.findall('SeepYarnAppSubmissionClient', out))

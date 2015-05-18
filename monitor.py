@@ -100,6 +100,12 @@ class ResourceThread:
   def args(self):
     return (self.host, self.seep_root)
 
+  def getJVMArgs(self, pid):
+    out = filter(lambda x: str(pid) in x, subprocess.check_output(['jps', '-m']).split('\n'))
+    if len(out):
+      return out[0].split(' ')
+    return ''
+
   def scanWorkers(self):
     workers = []
     pids = []
@@ -129,11 +135,11 @@ class ResourceThread:
     procsToRemove = []
     for proc in self.procs:
       try:
-        pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent', 'cmdline'])
+        pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent'])
       except psutil.NoSuchProcess:
         procsToRemove.add(proc)
       else:
-        cmdline = pinfo['cmdline']
+        cmdline = self.getJVMArgs(pinfo['pid'])
         pinfo['name'] = 'Seep-Worker'
         for i in xrange(len(cmdline)):
           if cmdline[i] == '--data.port':
@@ -142,8 +148,8 @@ class ResourceThread:
             pinfo['master.ip'] = cmdline[i+1]
           elif cmdline[i] == '--master.scheduler.port':
             pinfo['master.scheduler.port'] = cmdline[i+1]
-        del pinfo['cmdline']
         workers.append(pinfo)
+
     for proc in procsToRemove:
       self.procs.remove(proc)
     return workers
