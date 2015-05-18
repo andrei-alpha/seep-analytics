@@ -24,6 +24,7 @@ dataset['containers'] = {}
 dataset['apps'] = {}
 dataset['cluster'] = {}
 dataPortToContainerIdMap = {}
+dataPortToWorkerMap = {}
 
 EVENTS_PER_SECOND = 'events per second'
 LAST_DATAPOINTS = 40
@@ -317,6 +318,7 @@ def event():
     for worker in data['workers']:
       if 'data.port' in worker and str(worker['data.port']) in dataPortToContainerIdMap and 'type' in dataset['containers'][dataPortToContainerIdMap[worker['data.port']]] :
         worker['type'] = dataset['containers'][dataPortToContainerIdMap[worker['data.port']]]['type']
+        dataPortToWorkerMap[ worker['data.port'] ] = worker
     admin.updateResourceReport(data)
 
 @app.route('/backend/dataset')
@@ -381,6 +383,12 @@ def server_get_info():
 @app.route('/scheduler/host')
 def scheduler_host():
   return admin.getPreferredNode()
+
+# This is a debug command to communicate with seep workers
+@app.route('/moke/sudo', method='post')
+def server_moke():
+  data = dict(request.forms)
+  return admin.moke(data, dataPortToWorkerMap)
 
 @app.route("/<url:re:.+>")
 def logs(url):

@@ -137,7 +137,7 @@ class ResourceThread:
       try:
         pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent'])
       except psutil.NoSuchProcess:
-        procsToRemove.add(proc)
+        procsToRemove.append(proc)
       else:
         cmdline = self.getJVMArgs(pinfo['pid'])
         pinfo['name'] = 'Seep-Worker'

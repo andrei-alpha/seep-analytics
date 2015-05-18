@@ -297,6 +297,20 @@ function updateOperatorsTable(hosts) {
   }
 }
 
+function sudo(command, arg1, arg2) {
+  $.ajax({
+    url: "/moke/sudo",
+    type: "post",
+    data: {'command': command, 'arg1': arg1, 'arg2': arg2},
+    success: function(res) {
+      if (res == 'True')
+        console.log('Success!');
+      else
+        console.log('Failed!');
+    }
+  });
+}
+
 function getClusterInfo() {
   $.ajax({
     url: "/command/resource_report",

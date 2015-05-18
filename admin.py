@@ -3,6 +3,8 @@ import os
 import re
 import requests
 import select
+import socket
+import sys
 import subprocess
 import time
 
@@ -291,6 +293,45 @@ def getPreferredNode():
     cInfo[node]['score'] = computeBusyScore(cInfo[node])
     
     return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
+
+
+def moke(data, dataPortToWorkerMap):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    msg = ''
+
+    try:
+        if data['command'] == 'migrate':
+            dataPort = data['arg1']
+            worker = dataPortToWorkerMap[dataPort]
+            s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
+            if arg2 in data:
+                msg = 'migrate,' + dataPort + ',' + args
+            else:
+                msg = 'migrate,' + dataPort
+        elif data['command'] == 'stop':
+            dataPort = data['arg1']
+            worker = dataPortToWorkerMap[dataPort]
+            s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
+            msg = 'stop,' + dataPort
+        elif data['command'] == 'start':
+            dataPort = data['arg1']
+            worker = dataPortToWorkerMap[dataPort]
+            s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
+            msg = 'start,' + dataPort
+        elif data['command'] == 'exit':
+            dataPort = data['arg1']
+            worker = dataPortToWorkerMap[dataPort]
+            s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
+            msg = 'exit,' + dataPort
+    except:
+        print sys.exc_info()
+        s.close()
+        return False
+    
+    print 'send', msg
+    s.sendall(msg)
+    s.close()
+    return True
 
 def reset():
     updateTask('')
