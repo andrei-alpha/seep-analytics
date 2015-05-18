@@ -253,12 +253,12 @@ function updateOperatorsTable(hosts) {
       $('#operators-tab').append(html);
     }
 
-    if (!(host in addedOperatorsCountPerHost)) {
-      addedOperatorsCountPerHost[host] = 0;
+    if (!(hostName in addedOperatorsCountPerHost)) {
+      addedOperatorsCountPerHost[hostName] = 0;
     }
 
-    for (var i = 0; i < host['workers'].length; ++i) {
-      var worker = host['workers'][i];
+    for (var j = 0; j < host['workers'].length; ++j) {
+      var worker = host['workers'][j];
 
       var workerId = hostName + '-W' + worker['data.port'];
       liveOperatorsById[workerId] = true;
@@ -266,14 +266,14 @@ function updateOperatorsTable(hosts) {
       if ($('#' + workerId).length == 0) {
 
         // Add a new row to the table if 6 items were placed
-        if (addedOperatorsCountPerHost[host] % 6 == 0) {
-          var x = addedOperatorsCountPerHost[host];
+        if (addedOperatorsCountPerHost[hostName] % 6 == 0) {
+          var x = addedOperatorsCountPerHost[hostName];
           var template = $('#operatorsTableRowTemplate').html();
           var html = template.format(hostName, x, x+1, x+2, x+3, x+4, x+5);
           $('#operators-table-' + hostName + ' > tbody:last').append(html);
         }
 
-        var id = 'owt-' + hostName + '-' + addedOperatorsCountPerHost[host];
+        var id = 'owt-' + hostName + '-' + addedOperatorsCountPerHost[hostName];
         var template = $('#operatorTemplate').html();
         var icon = '<span class="glyphicon glyphicon-cog" aria-hidden="true"></span>'
         var data_port = (worker['data.port'] != undefined ? worker['data.port'] : 'x')
@@ -283,7 +283,7 @@ function updateOperatorsTable(hosts) {
         $('#' + workerId).css('background-color', colorGradientOperator(worker['cpu_percent']));
         $('#' + workerId + '-chart').highcharts( getSparkLineData('cpu', 'x', [{'name': 'cpu', 'data': [worker['cpu_percent']]}]) );
 
-        addedOperatorsCountPerHost[host] += 1;
+        addedOperatorsCountPerHost[hostName] += 1;
       } else {
         updateOperator(workerId, worker);
       }
