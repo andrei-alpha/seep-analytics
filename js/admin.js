@@ -210,6 +210,7 @@ function updateResourcesGraphs(data) {
 function updateOperator(id, data) {
   var chart = $('#' + id + '-chart').highcharts();
   chart.series[0].addPoint(data['cpu_percent']);
+  $('#' + id).css('opacity', '1');
   $('#' + id + '-cm').text('cpu: {0}% ram: {1}%'.format(data['cpu_percent'], parseFloat(data['memory_percent']).toFixed(2)));
   $('#' + id + '-pid').text('pid: {0}'.format(data['pid']));
   $('#' + id).css('background-color', colorGradientOperator(data['cpu_percent']));
@@ -217,12 +218,35 @@ function updateOperator(id, data) {
 
 function colorGradientOperator(value) {
   var colors = ['#BCF0B6', '#F5F55D', '#F08D3C', '#E85A5A'];
-  return colors[Math.min(Math.max(parseInt(value / 10), 0), 3)];
+  return colors[Math.min(Math.max(parseInt(value / 25), 0), 3)];
+}
+
+function markDeadWorker(id) {
+  $('#' + id + '-cm').text('dead');
+  $('#' + id + '-pid').text('dead');
+  $('#' + id).css('background-color', '#FFCACA');
+  $('#' + id).css('opacity', '0.6');
 }
 
 function updateOperatorsTable(hosts) {
-  for (host in hosts) {
-    hostName = host.replace(".", "-")
+  if (hosts == undefined || hosts.length)
+    return;
+  for (id in liveOperatorsById) {
+    liveOperatorsById[id] = false;
+  }
+
+  var keys = new Array();
+  for (k in hosts) {
+    keys.push(k);
+  }
+  keys = keys.sort();
+
+  for (var i = 0; i < keys.length; ++i) {
+    var host = hosts[keys[i]];
+    if (host['workers'].length == 0)
+      continue;
+
+    hostName = host['host'].replace(".", "-");
     if ($('#operators-table-' + hostName).length == 0) {
       var template = $('#operatorsHostTemplate').html();
       var html = template.format(hostName);
@@ -233,10 +257,12 @@ function updateOperatorsTable(hosts) {
       addedOperatorsCountPerHost[host] = 0;
     }
 
-    for (var i = 0; i < hosts[host]['workers'].length; ++i) {
-      var worker = hosts[host]['workers'][i];
+    for (var i = 0; i < host['workers'].length; ++i) {
+      var worker = host['workers'][i];
 
       var workerId = hostName + '-W' + worker['data.port'];
+      liveOperatorsById[workerId] = true;
+
       if ($('#' + workerId).length == 0) {
 
         // Add a new row to the table if 6 items were placed
@@ -250,7 +276,8 @@ function updateOperatorsTable(hosts) {
         var id = 'owt-' + hostName + '-' + addedOperatorsCountPerHost[host];
         var template = $('#operatorTemplate').html();
         var icon = '<span class="glyphicon glyphicon-cog" aria-hidden="true"></span>'
-        var title = icon + (worker['type'] != undefined ? worker['type'] : 'Generic') + ' Operator ' + worker['data.port']
+        var data_port = (worker['data.port'] != undefined ? worker['data.port'] : 'x')
+        var title = icon + (worker['type'] != undefined ? worker['type'] : 'Generic') + ' Operator ' + data_port
         var html = template.format(workerId, title, worker['cpu_percent'], parseFloat(worker['memory_percent']).toFixed(2), worker['pid'])
         $('#' + id).html(html);
         $('#' + workerId).css('background-color', colorGradientOperator(worker['cpu_percent']));
@@ -260,6 +287,12 @@ function updateOperatorsTable(hosts) {
       } else {
         updateOperator(workerId, worker);
       }
+    }
+  }
+
+  for (id in liveOperatorsById) {
+    if (liveOperatorsById[id] == false) {
+      markDeadWorker(id);
     }
   }
 }

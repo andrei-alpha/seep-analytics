@@ -316,7 +316,7 @@ def event():
   if event == 'resource report':
     data = json.loads(data)
     for worker in data['workers']:
-      if 'data.port' in worker and str(worker['data.port']) in dataPortToContainerIdMap:
+      if 'data.port' in worker and str(worker['data.port']) in dataPortToContainerIdMap and 'type' in dataset['containers'][dataPortToContainerIdMap[worker['data.port']]]:
         worker['type'] = dataset['containers'][dataPortToContainerIdMap[worker['data.port']]]['type']
     admin.updateResourceReport(data)
 

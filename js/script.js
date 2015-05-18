@@ -17,6 +17,7 @@ var graphTitles = ['1-minute rate', '5-minute rate', '15-minute rate', 'mean rat
   '1-minute rate-avg', '5-minute rate-avg', '15-minute rate-avg', 'mean rate-avg',
   '1-minute rate-fairness', '5-minute rate-fairness', '15-minute rate-fairness', 'mean rate-fairness'];
 var addedOperatorsCountPerHost = {};
+var liveOperatorsById = {};
 
 /*
 Performs data aggregation by the given interval
