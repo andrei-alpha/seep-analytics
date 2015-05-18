@@ -104,7 +104,7 @@ class ResourceThread:
     workers = []
     pids = []
     for proc in psutil.process_iter():
-      if proc.name() == 'java' and not proc in self.procs:
+      if ((isinstance(proc.name, str) and proc.name == 'java') or (hasattr(proc.name, '__call__') and proc.name() == 'java')) and not proc in self.procs:
         pids.append(proc.pid)
 
     for pid in pids:
