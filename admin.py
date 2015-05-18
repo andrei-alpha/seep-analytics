@@ -326,12 +326,12 @@ def moke(data, dataPortToWorkerMap):
     except:
         print sys.exc_info()
         s.close()
-        return False
+        return 'failed'
     
     print 'send', msg
     s.sendall(msg)
     s.close()
-    return True
+    return 'ok'
 
 def reset():
     updateTask('')

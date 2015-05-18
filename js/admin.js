@@ -214,6 +214,11 @@ function updateOperator(id, data) {
   $('#' + id + '-cm').text('cpu: {0}% ram: {1}%'.format(data['cpu_percent'], parseFloat(data['memory_percent']).toFixed(2)));
   $('#' + id + '-pid').text('pid: {0}'.format(data['pid']));
   $('#' + id).css('background-color', colorGradientOperator(data['cpu_percent']));
+
+  var icon = '<span class="glyphicon glyphicon-cog" aria-hidden="true"></span>'
+  var data_port = (data['data.port'] != undefined ? data['data.port'] : 'x')
+  var title = icon + (data['type'] != undefined ? data['type'] : 'Generic') + ' Operator ' + data_port
+  $('#' + id + '-title').html(title);
 }
 
 function colorGradientOperator(value) {

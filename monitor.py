@@ -101,7 +101,7 @@ class ResourceThread:
     return (self.host, self.seep_root)
 
   def getJVMArgs(self, pid):
-    out = filter(lambda x: str(pid) in x, subprocess.check_output(['jps', '-m']).split('\n'))
+    out = filter(lambda x: re.search('^' + str(pid) + '\s', x), subprocess.check_output(['jps', '-m']).split('\n'))
     if len(out):
       return out[0].split(' ')
     return ''
