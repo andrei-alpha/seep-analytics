@@ -104,8 +104,11 @@ class ResourceThread:
     workers = []
     pids = []
     for proc in psutil.process_iter():
-      if ((isinstance(proc.name, str) and proc.name == 'java') or (hasattr(proc.name, '__call__') and proc.name() == 'java')) and not proc in self.procs:
-        pids.append(proc.pid)
+      try:
+        if proc.name() == 'java' and not proc in self.procs:
+          pids.append(proc.pid)
+      except psutil.NoSuchProcess:
+        pass
 
     for pid in pids:
       proc = psutil.Process(pid)
@@ -123,11 +126,12 @@ class ResourceThread:
         if cntWorker > 20:
           self.procs.add(proc)
 
+    procsToRemove = []
     for proc in self.procs:
       try:
         pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent', 'cmdline'])
       except psutil.NoSuchProcess:
-        self.procs.remove(proc)
+        procsToRemove.add(proc)
       else:
         cmdline = pinfo['cmdline']
         pinfo['name'] = 'Seep-Worker'
@@ -140,6 +144,8 @@ class ResourceThread:
             pinfo['master.scheduler.port'] = cmdline[i+1]
         del pinfo['cmdline']
         workers.append(pinfo)
+    for proc in procsToRemove:
+      self.procs.remove(proc)
     return workers
 
   def scan(self):
