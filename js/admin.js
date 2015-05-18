@@ -303,7 +303,7 @@ function sudo(command, arg1, arg2) {
     type: "post",
     data: {'command': command, 'arg1': arg1, 'arg2': arg2},
     success: function(res) {
-      if (res == 'True')
+      if (res == 'ok')
         console.log('Success!');
       else
         console.log('Failed!');
@@ -363,6 +363,7 @@ function getAvailableOptions() {
     type: "get",
     success: function(response) {
     	for (key in response) {
+        $('#' + key).html('');
         for (var i = 0; i < response[key].length; ++i) {
     		  $('#' + key).append('<option class="option">' + response[key][i] + '</option>')
         }

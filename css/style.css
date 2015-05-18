@@ -37,11 +37,16 @@ body {
 }
 
 #available-queries {
-	width: 75%;
+	width: 44%;
 }
-
+#deployment-size {
+	width: 15%;
+}
 #seep-branches {
 	width: 33%;
+}
+#analytics-branches {
+	width: 53%;
 }
 
 .operator {
@@ -55,4 +60,9 @@ body {
 .vertical-text {
 	transform: rotate(90deg);
 	transform-origin: -2px 18px 0;
+}
+
+.vertical-text2 {
+	transform: rotate(270deg);
+	transform-origin: 75px 110px 0;
 }

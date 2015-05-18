@@ -304,8 +304,8 @@ def moke(data, dataPortToWorkerMap):
             dataPort = data['arg1']
             worker = dataPortToWorkerMap[dataPort]
             s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
-            if arg2 in data:
-                msg = 'migrate,' + dataPort + ',' + args
+            if 'arg2' in data:
+                msg = 'migrate,' + dataPort + ',' + data['arg2']
             else:
                 msg = 'migrate,' + dataPort
         elif data['command'] == 'stop':

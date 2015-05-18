@@ -72,7 +72,7 @@
                 <h3>Hadoop YARN</h3>
                 <p>Shortcut to main YARN components such as: <p>1) Namenode to see cluster storage, availability and replication.</p> <p>2) Resouce Manager to view all running applications and where they are allocated</p></p>
                 <p>3) Clear Hadoop user log data from each machine and from analytics server memory.</p></p>
-                <hr style="height:23px; visibility:hidden;" />
+                <hr style="height:37px; visibility:hidden;" />
                 <p>
                   <a href="http://wombat01.doc.res.ic.ac.uk:50070/" class="btn btn-success" role="button">Namenode</a>
                   <a href="http://wombat01.doc.res.ic.ac.uk:8088/" class="btn btn-primary" role="button">Resource Manager</a>
@@ -87,8 +87,9 @@
               <div class="caption">
                 <hr style="height:34px; visibility:hidden;" />
                 <h3>SEEP</h3>
-                <p>Real-Time Data Processing Framework. Available actions: <p>1) Deploy new query to cluster</p><p>2) Open Web-UI</p><p>3) Stop all running queries.</p></p>
-                <hr style="height:27px; visibility:hidden;" />
+                <p>Real-Time Data Processing Framework. Available actions: <p>1) Deploy a new query(s) to cluster. Choose query type and how many to deploy.</p><p>2) Stop all running SEEP queries.</p>
+                <p>1) Update SEEP version and re-compile the system cluster wide</p>
+                <hr style="height:0px; visibility:hidden;" />
                 <select id="available-queries" class="selectpicker"></select>
                 <select id="deployment-size" class="selectpicker">
                   <option>1</option>
@@ -99,11 +100,14 @@
                   <option>6</option>
                   <option>7</option>
                   <option>8</option>
+                  <option>9</option>
+                  <option>10</option>
                 </select>
+                <select id="seep-branches" class="selectpicker"></select>
                 <p>
                   <a onclick="submitSeepQuery()" class="btn btn-success" role="button">New Query</a>
-                  <a href="http://wombat01.doc.res.ic.ac.uk:8080" class="btn btn-primary" role="button">Web UI</a>
-                  <a onclick="killAllSeepQueries()" class="btn btn-danger" role="button">Stop all queries</a>
+                  <a onclick="killAllSeepQueries()" class="btn btn-danger" role="button">Stop Queries</a>
+                  <a onclick="updateSEEP()" class="btn btn-success" role="button">Update SEEP</a>
                 </p>
               </div>
             </div>
@@ -113,15 +117,12 @@
               <img src="static/imgs/git.png" width="245">
               <div class="caption">
                 <h3>Admin Console</h3>
-                <p>Administration console. Available actions: <p>1) Update SEEP version and re-compile the system cluster wide</p><p>2) Update analytics version and restart system cluster wide.</p>
-                <p>3) Clear Kafka log data from each machine.</p></p>
-                <hr style="height:1px; visibility:hidden;" />
-                <select id="seep-branches" class="selectpicker"></select>
+                <p>Administration console. Available actions: <p>1) Update analytics version and restart system cluster wide.</p>
+                <p>2) Clear Kafka log data from each machine.</p>
+                <hr style="height:63px; visibility:hidden;" />
                 <select id="analytics-branches" class="selectpicker"></select>
-                
                 <p>
-                  <a onclick="updateSEEP()" class="btn btn-success" role="button">Update SEEP</a>
-                  <a onclick="updateAnalytics()" class="btn btn-primary" role="button">Update me</a>
+                  <a onclick="updateAnalytics()" class="btn btn-primary" role="button">Update Analytics Server</a>
                   <a onclick="clearKafkaLogs()" class="btn btn-danger" role="button">Kafka Logs</a>
                 </p>
 
@@ -232,9 +233,10 @@
 
     <!-- Host operators table template -->
     <script type="text/template" id="operatorsHostTemplate">
+      <h3 class="vertical-text2">{0}</h3> 
       <table id="operators-table-{0}">
         <thead>
-          <tr><td colspan="6"><h3>{0}</h3></td></tr>
+          <!-- <tr><td colspan="6"><h3>{0}</h3></td></tr> -->
         </thead>
         <tbody>
         </tbody
