@@ -39,6 +39,35 @@ KILL_ALL_SEEP = 'kill_all_seep'
 CLEAR_KAFKA_LOGS = 'clear_kafka_logs'
 CLEAR_HADOOP_LOGS = 'clear_hadoop_logs'
 
+
+try:
+    from line_profiler import LineProfiler
+
+    def do_profile(follow=[]):
+        def inner(func):
+            def profiled_func(*args, **kwargs):
+                try:
+                    profiler = LineProfiler()
+                    profiler.add_function(func)
+                    for f in follow:
+                        profiler.add_function(f)
+                    profiler.enable_by_count()
+                    return func(*args, **kwargs)
+                finally:
+                    profiler.print_stats()
+            return profiled_func
+        return inner
+
+except ImportError:
+    def do_profile(follow=[]):
+        "Helpful if you accidentally leave in production!"
+        def inner(func):
+            def nothing(*args, **kwargs):
+                return func(*args, **kwargs)
+            return nothing
+        return inner
+
+
 if __name__ == '__main__':
   usage = ("We want as arguments:\n 1) hosts file (required)\n 2) SEEP root "
            "directory (required)\n 3) Analytics directory (default is current "
@@ -401,5 +430,12 @@ def logs(url):
     return format_links(urls[url])
   return "No logs data found"
 
+@app.route('/stop')
+def server_stop():
+  sys.stderr.close()
+
 admin.sendCommand(None, 'reset')
-app.run(host=gethostname(), port=7007, reloader=True)
+@do_profile(follow=[event, update, updateStatistics, updateClusterData, updateAppData, updateContainerData, admin.updateResourceReport, admin.getAvailableOptions])
+def main_wrapper():
+  app.run(host=gethostname(), port=7007, reloader=True)
+main_wrapper()

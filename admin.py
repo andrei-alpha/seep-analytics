@@ -305,6 +305,11 @@ def moke(data, dataPortToWorkerMap):
             worker = dataPortToWorkerMap[dataPort]
             s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
             if 'arg2' in data:
+                host = data['arg2']
+                if not host.split('.')[0] in hosts_names:
+                    raise ValueError('Host in not part of the known hosts.')
+                if 'wombat' in host and not '.doc.res.ic.ac.uk' in host:
+                    host += '.doc.res.ic.ac.uk'
                 msg = 'migrate,' + dataPort + ',' + data['arg2']
             else:
                 msg = 'migrate,' + dataPort
@@ -312,7 +317,10 @@ def moke(data, dataPortToWorkerMap):
             dataPort = data['arg1']
             worker = dataPortToWorkerMap[dataPort]
             s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
-            msg = 'stop,' + dataPort
+            if not 'arg2' in data:
+                msg = 'stop,' + dataPort
+            elif data['arg2'] == 'all':
+                msg = 'stop'
         elif data['command'] == 'start':
             dataPort = data['arg1']
             worker = dataPortToWorkerMap[dataPort]
@@ -322,7 +330,10 @@ def moke(data, dataPortToWorkerMap):
             dataPort = data['arg1']
             worker = dataPortToWorkerMap[dataPort]
             s.connect((worker['master.ip'], int(worker['master.scheduler.port'])))
-            msg = 'exit,' + dataPort
+            if not 'arg2' in data:
+                msg = 'exit,' + dataPort
+            elif data['arg2'] == 'all':
+                msg = 'exit'
     except:
         print sys.exc_info()
         s.close()
