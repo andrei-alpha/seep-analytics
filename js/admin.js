@@ -98,10 +98,14 @@ function updateResourcesGraphs(data) {
       point = {};
       point.y = data['hosts'][host]['cpu'][i];
       point.color = colorGradient(point.y);
+      
       if (cnt == 0) {
         series['cpu'].push({'name': 'cpu' + (1 + i), 'data': [point]});
       } else {
-        series['cpu'][i]['data'].push(point);
+        if (series['cpu'].length <= i)
+          series['cpu'].push({'name': 'cpu' + (1 + i), 'data': [point]});
+        else
+          series['cpu'][i]['data'].push(point);
       }
     }
 
