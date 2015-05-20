@@ -28,7 +28,7 @@ def send(self, payload):
     except requests.ConnectionError:
       print 'Connection problems. Retrying in', pause, ' sec..'
       self.sleep(pause)
-      pause *= 2
+      pause = min(60, pause * 2)
 
 class WatcherThread:
   def __init__(self, host, path, prefix):
@@ -165,7 +165,7 @@ class ResourceThread:
     if not hasattr(self, 'read_bytes') or not hasattr(self, 'write_bytes'):
       self.info['disk_io'] = [0, 0]
     else:
-      self.info['disk_io'] = [(io.read_bytes - self.read_bytes) / 10, (io.write_bytes - self.write_bytes) / 10]
+      self.info['disk_io'] = [(io.read_bytes - self.read_bytes) / 5, (io.write_bytes - self.write_bytes) / 5]
     self.write_bytes = io.write_bytes
     self.read_bytes = io.read_bytes
 
@@ -174,7 +174,7 @@ class ResourceThread:
     if not hasattr(self, 'bytes_sent') or not hasattr(self, 'bytes_recv'):
       self.info['net_io'] = [0, 0]
     else:
-      self.info['net_io'] = [(net.bytes_sent - self.bytes_sent) / 10, (net.bytes_recv - self.bytes_recv) / 10]
+      self.info['net_io'] = [(net.bytes_sent - self.bytes_sent) / 5, (net.bytes_recv - self.bytes_recv) / 5]
     self.bytes_sent = net.bytes_sent
     self.bytes_recv = net.bytes_recv
 

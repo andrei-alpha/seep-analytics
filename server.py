@@ -409,10 +409,6 @@ def server_get_info():
   response.content_type = 'application/json'
   return clusterInfo
 
-@app.route('/scheduler/host')
-def scheduler_host():
-  return admin.getPreferredNode()
-
 # This is a debug command to communicate with seep workers
 @app.route('/moke/sudo', method='post')
 def server_moke():
@@ -430,12 +426,12 @@ def logs(url):
     return format_links(urls[url])
   return "No logs data found"
 
-@app.route('/stop')
-def server_stop():
-  sys.stderr.close()
+#@app.route('/stop')
+#def server_stop():
+#  sys.stderr.close()
 
 admin.sendCommand(None, 'reset')
-@do_profile(follow=[event, update, updateStatistics, updateClusterData, updateAppData, updateContainerData, admin.updateResourceReport, admin.getAvailableOptions])
-def main_wrapper():
-  app.run(host=gethostname(), port=7007, reloader=True)
-main_wrapper()
+#@do_profile(follow=[event, update, updateStatistics, updateClusterData, updateAppData, updateContainerData, admin.updateResourceReport, admin.getAvailableOptions])
+#def main_wrapper():
+app.run(host=gethostname(), port=7007, reloader=True)
+#main_wrapper()

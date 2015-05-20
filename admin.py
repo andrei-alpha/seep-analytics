@@ -15,6 +15,7 @@ class Globals:
     expectedTime = None
     baseProgress = None
     allocatedPercentage = None
+    schedulerPort = 7009
     clusterInfo = {}
     timeEstimations = {
         'Stopping all seep queries...': 2,
@@ -216,8 +217,9 @@ def submitQuery(queryName, deploymentSize):
         baseYarnWorkerMasterPort += 5
         baseYarnWorkerDataPort += 5
         baseYarnSchedulerPort += 1
-        serverHost = 'http://' + os.uname()[1] + ':7007'
-        process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerMasterPort), str(baseYarnWorkerDataPort), str(baseYarnSchedulerPort), serverHost], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        serverHost = 'http://' + os.uname()[1] + ':' + str(Globals.schedulerPort)
+        process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerMasterPort), str(baseYarnWorkerDataPort),
+            str(baseYarnSchedulerPort), serverHost], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while steps < 5 * (i + 1):
             out = unblockingRead(process)
             steps += len(re.findall('SeepYarnAppSubmissionClient', out))
@@ -250,17 +252,12 @@ def clearHadoopLogs():
     updateTask('Deleting Hadoop Logs - Done')
     updateProgress(100)
 
-def computeBusyScore(data):
-    return (data['avg_cpu'] / 10) + data['allocations']
-
 def updateResourceReport(data):
     host = data['host']
     cInfo = Globals.clusterInfo
     if not 'hosts' in cInfo:
         cInfo['hosts'] = {}
-    data['allocations'] = (cInfo['hosts'][host]['allocations'] if host in cInfo['hosts'] else 0)
     data['avg_cpu'] = float(sum(data['cpu'])) / len(data['cpu'])
-    data['score'] = computeBusyScore(data)
     
     cInfo['hosts'][host] = data
     cInfo['overall'] = {
@@ -273,27 +270,8 @@ def updateResourceReport(data):
         'kafka_logs': sum([cInfo['hosts'][host]['logs'][0] for host in cInfo['hosts']]) * 1024,
         'hadoop_logs': sum([cInfo['hosts'][host]['logs'][1] for host in cInfo['hosts']]) * 1024,
     }
-
-def getPreferredNode():
-    preferredNodes = []
-    cInfo = Globals.clusterInfo['hosts']
-    if len(Globals.clusterInfo['hosts']) == 0:
-        return '*'
-
-    for host in cInfo:
-        # If we have at least 3 hosts don't allocate on the current node
-        if len(cInfo) > 3 and os.uname()[1] in host:
-            continue
-        preferredNodes.append([cInfo[host]['score'], host])
-    preferredNodes.sort()
-    
-    node = preferredNodes[0][1]
-    # Assume we will allocate a container already
-    cInfo[node]['allocations'] += 1
-    cInfo[node]['score'] = computeBusyScore(cInfo[node])
-    
-    return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
-
+    # Send the information to scheduler
+    sendRequest('http://' + os.uname()[1] + ':' + str(Globals.schedulerPort), '/scheduler/event', {'data': json.dumps(cInfo)}, 'post')
 
 def moke(data, dataPortToWorkerMap):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
