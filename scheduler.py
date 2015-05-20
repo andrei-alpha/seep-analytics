@@ -18,29 +18,62 @@ class RequestDispatcher:
   def __init__(self):
     self.working = True
     self.requests = Queue.Queue()
+    self.pending = {}
+    self.estimate = {}
 
   def stop(self):
     print 'Stoping request distpatcher thread...'
     self.working = False
 
+  def setEstimation(self, src, dest, value):
+    self.estimate[src] = (self.estimate[src] if src in self.estimate else 0) - value
+    self.estimate[dest] = (self.estimate[dest] if dest in self.estimate else 0) + value
+
+  def getEstimation(self, host):
+    return (self.estimate[host] if host in self.estimate else 0)
+
+  def printRequest(self, request):
+    return 'request W' + request['id'] + ' from ' + request['source'] + ' to ' + request['destination']
+
   def send(self, request):
-    #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-      #s.connect((request['master.ip'], int(request['master.scheduler.port'])))
+      s.connect((request['master.ip'], int(request['master.scheduler.port'])))
       if 'wombat' in request['destination'] and not '.doc.res.ic.ac.uk' in request['destination']:
         request['destination'] += '.doc.res.ic.ac.uk'
-      #s.sendall('migrate,' + request['id'] + ',' + request['destination'])
-      print 'Dispached request to move W' + request['id'] + ' from ' + request['source'] + ' to ' + request['destination'] 
+      s.sendall('migrate,' + request['id'] + ',' + request['destination'])
+      self.setEstimation(request['source'], request['destination'], request['value'])
+      print 'Dispached', self.printRequest(request)
+      request['time'] = time.time()
+      self.pending[request['id']] = request
     except:
       print 'Request', request, 'failed!'
       print sys.exc_info()
     finally:
-      #s.close()
+      s.close()
       pass
 
   def add(self, request):
+    if request['id'] in self.pending:
+      return
     self.requests.put(request)
-    print 'Received request to move W' + request['id'] + ' from ' + request['source'] + ' to ' + request['destination']
+    print 'Received', self.printRequest(request)
+
+  def checkPending(self, report):
+    widToHostMap = {}
+    for host in report.values():
+      for worker in host['workers']:
+        widToHostMap[worker['data.port']] = host['host']
+
+    for wid in self.pending.keys():
+      request = self.pending[wid]
+      dest = request['destination']
+      # If we see the worker running on the destination host, remove the request
+      if wid in widToHostMap[dest]:
+        timeDelta = int(time.time() - request['time'])
+        self.setEstimation(request['source'], request['destination'], -request['value'])
+        print 'Completed', self.printRequest(request), 'after', timeDelta, 'seconds'
+        del self.pending[wid]
 
   def run(self):
     while self.working:
@@ -65,21 +98,20 @@ class Scheduler:
     self.working = False
 
   def reportResources(self, report):
+    dispatcher.checkPending(report)
     self.updates.append(report)
 
-  def estimatePotential(self, cpu):
-    return max(0, (cpu - 60))
+  def estimatePotential(self, host):
+    return max(0, (host['avg_cpu'] + dispatcher.getEstimation(host['host']) / len(host['cpu']) - 60))
 
   def schedule(self):
-    # Assign some greedy resource consumtion scores
+    # Assign some resource consumtion scores based on a greedy algorithm
     hosts = []
-    for hostName in self.report:
+    for host in self.report.values():
       # This is reserved for scheduler, zookeeper, analytics
-      if 'wombat07' in hostName:
+      if 'wombat07' in host['host']:
         continue
-
-      host = self.report[hostName]
-      host['potential'] = self.estimatePotential(host['avg_cpu'])
+      host['potential'] = self.estimatePotential(host)
       host['cpu_score'] = sum(float(x['cpu_percent'] + host['potential']) / len(host['cpu']) for x in host['workers'])
       nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
       host['cpu_score'] += (0 if nonSeepCpu > 5 else host['potential']) + nonSeepCpu
@@ -107,17 +139,17 @@ class Scheduler:
         break
       worker = workersToMove.pop()
       request = {'id': worker['data.port'],
-        'master.ip': worker['master.ip'],
+        'master.ip': worker['master.ip'], 'value': worker['cpu_percent'],
         'master.scheduler.port': worker['master.scheduler.port'],
         'destination': host['host'], 'source': worker['source']}
       dispatcher.add(request)
 
   def run(self):
     while self.working:
-      self.report = (self.updates[-1] if len(self.updates) else [])
+      self.report = (self.updates[-1] if len(self.updates) else {})
       self.schedule()
       self.updates = []
-      self.sleep(5)
+      self.sleep(2)
 
 @app.route('/scheduler/event', method='post')
 def scheduler_evet():
