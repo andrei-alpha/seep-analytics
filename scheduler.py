@@ -74,6 +74,10 @@ class Scheduler:
     # Assign some greedy resource consumtion scores
     hosts = []
     for hostName in self.report:
+      # This is reserved for scheduler, zookeeper, analytics
+      if 'wombat07' in hostName:
+        continue
+
       host = self.report[hostName]
       host['potential'] = self.estimatePotential(host['avg_cpu'])
       host['cpu_score'] = sum(float(x['cpu_percent'] + host['potential']) / len(host['cpu']) for x in host['workers'])
@@ -95,7 +99,7 @@ class Scheduler:
 
       print 'selected', worker['data.port'] + ':' + str(worker['cpu_percent']), worker['cpu_score']
 
-    hosts = sorted(hosts, key=lambda x: x['cpu_score'])
+    hosts = sorted(hosts, key=lambda x: x['cpu_score'], reverse=True)
     workersToMove = sorted(workersToMove, key=lambda x: x['cpu_score'])
       
     for host in hosts:
