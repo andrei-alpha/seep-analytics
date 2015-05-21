@@ -153,6 +153,9 @@ class Scheduler:
         continue
       worker = max(host['workers'], key=lambda x: x['cpu_percent'])
       worker['cpu_score'] = worker['cpu_percent'] + host['potential']
+      if worker['cpu_score'] < 50:
+        continue
+
       worker['source_cpu_score'] = host['cpu_score']
       worker['source_cpu_len'] = len(host['cpu'])
       worker['source'] = host['host']
@@ -171,6 +174,8 @@ class Scheduler:
         newPotential = self.estimatePotential(host['avg_cpu'] + worker['cpu_percent'] / len(host['cpu']))
         newWorkers = [x for y in zip(host['workers'],[worker]) for x in y]
         newCpuScoreDest = sum(float(x['cpu_percent'] + newPotential) / len(host['cpu']) for x in newWorkers)
+        nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in newWorkers)
+        newCpuScoreDest += (0 if nonSeepCpu < 10 else newPotential) + nonSeepCpu
         newCpuScoreSrc = worker['source_cpu_score'] - worker['cpu_score'] / worker['source_cpu_len']
         if worker['source_cpu_score'] - newCpuScoreDest < config.getint('Scheduler', 'min.movment.score.difference'):
           continue
