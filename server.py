@@ -3,6 +3,7 @@ import copy
 import configparser
 import datetime
 import json
+import logger
 import os
 import re
 import sys
@@ -77,6 +78,7 @@ if __name__ == '__main__':
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
   config = config['Basic']
+  log = logger.Logger('Scheduler')
 
   # TODO: check that the configuration is valid
   #if len(sys.argv) < 3 or not os.path.exists(sys.argv[1]) or not os.path.exists(sys.argv[2]) or (len(sys.argv) >= 4 and not os.path.exists(sys.argv[3])):  
@@ -91,6 +93,7 @@ if __name__ == '__main__':
   admin.baseYarnSchedulerPort = config.getint('base.yarn.scheduler.port')
   LAST_DATAPOINTS = config.getint('last.datapoints')
   admin.Globals.schedulerPort = config.getint('scheduler.port')
+  admin.Globals.log = log
 
 def format_links(links):
   html = '<table>'
@@ -272,7 +275,7 @@ def update(appId, contId, data):
     try:
       json = convert(report)
     except:
-      print 'Unexpected error when converting report:', report
+      log.error('Unexpected error when converting report:', report)
       continue
 
     #print 'find', appId, contId, json

@@ -1,6 +1,7 @@
 import configparser
 import json
 import psutil
+import logger
 import os
 import re
 import sys
@@ -27,7 +28,7 @@ def send(self, payload):
       requests.post(self.host + '/event', data=payload)
       success = True
     except requests.ConnectionError:
-      print 'Connection problems. Retrying in', pause, ' sec..'
+      log.debug('Connection problems. Retrying in', pause, ' sec..')
       self.sleep(pause)
       pause = min(60, pause * 2)
 
@@ -82,7 +83,7 @@ class WatcherThread:
       self.sleep(config.getint('monitor.logs.scan.interval'))
 
   def stop(self):
-    print 'Stoping watcher thread...'
+    log.info('Stoping watcher thread...')
     self.working = False
 
   def sleep(self, seconds):
@@ -189,6 +190,7 @@ class ResourceThread:
     except subprocess.CalledProcessError:
       self.info['logs'] = [0, 0]
     self.info['host'] = os.uname()[1]
+    log.info('Resource Report', self.info)
     payload = {'event': 'resource report', 'data': json.dumps(self.info)}
     send(self, payload)
 
@@ -199,7 +201,7 @@ class ResourceThread:
       self.sleep(config.getint('monitor.resources.scan.interval'))
 
   def stop(self):
-    print 'Stoping resource thread...'
+    log.info('Stoping resource thread...')
     self.working = False
 
   def sleep(self, seconds):
@@ -236,7 +238,7 @@ def server_command():
     startResourceThread(args[0], args[1])
   else:
     global globalProcess
-    print 'run', command
+    log.info('run', command)
     globalProcess = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 @app.route('/status')
@@ -260,6 +262,7 @@ if __name__ == '__main__':
   #if len(sys.argv) != 5 or not os.path.exists(sys.argv[3]) or not os.path.exists(sys.argv[4]):
   #  print usage
   #  exit(0)
+  log = logger.Logger('Scheduler')
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
   config = config['Basic']

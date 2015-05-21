@@ -17,6 +17,7 @@ class Globals:
     allocatedPercentage = None
     schedulerPort = None
     clusterInfo = {}
+    log = None
     timeEstimations = {
         'Stopping all seep queries...': 2,
         'Fetching origin...': 1,
@@ -44,7 +45,7 @@ def getProgress():
     if Globals.allocatedPercentage:
         now = time.time()
         res = int(Globals.baseProgress + min(1.0, float(now - Globals.startTimestamp) / Globals.expectedTime) * Globals.allocatedPercentage)
-        print 'progress:', Globals.adminProgress, ' simulatedProgress:', res, 'expectedTime:', Globals.expectedTime, 'elapsedTime:', int(now - Globals.startTimestamp)
+        Globals.log.debug('progress:', Globals.adminProgress, ' simulatedProgress:', res, 'expectedTime:', Globals.expectedTime, 'elapsedTime:', int(now - Globals.startTimestamp))
         return int(Globals.baseProgress + min(1.0, float(now - Globals.startTimestamp) / Globals.expectedTime) * Globals.allocatedPercentage)
     return Globals.adminProgress
 
@@ -52,7 +53,7 @@ def updateTask(task, taskAllocatedPercentage = None):
     now = time.time()
     if Globals.startTimestamp and Globals.adminCurrentTask:
         deltaTime = int(now - Globals.startTimestamp)
-        print Globals.adminCurrentTask, 'took', deltaTime, 'seconds'
+        Globals.log.info(Globals.adminCurrentTask, 'took', deltaTime, 'seconds')
         # Update time estimations if required
         if Globals.adminCurrentTask in Globals.timeEstimations and deltaTime > 1:
             Globals.timeEstimations[Globals.adminCurrentTask] = deltaTime
@@ -72,24 +73,24 @@ def sendCommand(host, command, cwd='.'):
             try:
                 requests.post(host + '/command', data={'command': command, 'cwd': cwd}).text
             except requests.ConnectionError:
-                print 'Failed for host:', host
+                Globals.log.warn('Failed for host:', host)
     else:
         try:
             return requests.post(host + '/command', data={'command': command, 'cwd': cwd}).text
         except requests.ConnectionError:
-            print 'Failed for host:', host
+            Globals.log.warn('Failed for host:', host)
 
 def sendRequest(host, path, data, type):
     if type == 'get':
         try:
             return requests.get(host + path)
         except requests.ConnectionError:
-            print 'Failed for host:', host
+            Globals.log.warn('Failed for host:', host)
     else:
         try:
             return requests.post(host + path, data=data)
         except requests.ConnectionError:
-            print 'Failed for host:', host
+            Globals.log.warn('Failed for host:', host)
 
 def getStatus(host, readAll = False):
     out = requests.get(host + '/status').text
@@ -312,11 +313,11 @@ def moke(data, dataPortToWorkerMap):
             elif data['arg2'] == 'all':
                 msg = 'exit'
     except:
-        print sys.exc_info()
+        Globals.log.error(sys.exc_info())
         s.close()
         return 'failed'
     
-    print 'send', msg
+    Globals.log.info('send', msg)
     s.sendall(msg)
     s.close()
     return 'ok'
