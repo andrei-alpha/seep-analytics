@@ -1,6 +1,13 @@
 # Hosts file
 hosts
 
+# Properties file
+analytics.properties
+
+# Logs folder
+logs/*
+profiles/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

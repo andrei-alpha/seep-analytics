@@ -24,6 +24,7 @@ class RequestDispatcher:
     self.pending = {}
     self.estimate = {}
     self.lastSentPerHost = {}
+    self.lastReceivedPerId = {}
 
   def stop(self):
     print 'Stoping request distpatcher thread...'
@@ -42,8 +43,9 @@ class RequestDispatcher:
   def send(self, request):
     if request['master.scheduler.port'] in self.lastSentPerHost:
       timeDelta = int(time.time() - self.lastSentPerHost[request['master.scheduler.port']])
-      if timeDelta < config['Scheduler']['scheduling.appmaster.interval']:
-        log.info("Last Request to AppMaster", request['master.scheduler.port'], 'was sent', timeDelta, 'seconds ago. Postpone this one.')
+      if timeDelta < config.getint('Scheduler', 'scheduling.appmaster.interval'):
+        print config.getint('Scheduler', 'scheduling.appmaster.interval'), self.lastSentPerHost[request['master.scheduler.port']], time.time()
+        log.info("Postpone Request to AppMaster", request['master.scheduler.port'], 'last was sent', timeDelta, 'seconds ago.')
         self.postponedRequests.put(request)
         return
 
@@ -66,6 +68,11 @@ class RequestDispatcher:
   def add(self, request):
     if request['id'] in self.pending:
       return
+    if request['id'] in self.lastReceivedPerId:
+      timeDelta = int(time.time() - self.lastReceivedPerId[request['id']])
+      if timeDelta < config.getint('Scheduler', 'scheduling.operator.interval'):
+        return
+    self.lastReceivedPerId[request['id']] = time.time()
     self.requests.put(request)
     log.info('Received', self.printRequest(request))
 
@@ -121,7 +128,7 @@ class Scheduler:
     self.updates.append(report)
 
   def estimatePotential(self, host):
-    return max(0, (host['avg_cpu'] + dispatcher.getEstimation(host['host']) / len(host['cpu']) - 60))
+    return max(0, host['avg_cpu'] - 60)
 
   def schedule(self):
     # Assign some resource consumtion scores based on a greedy algorithm
@@ -130,6 +137,7 @@ class Scheduler:
       # This is reserved for scheduler, zookeeper, analytics
       if 'wombat07' in host['host']:
         continue
+      host['avg_cpu'] = host['avg_cpu'] + dispatcher.getEstimation(host['host']) / len(host['cpu'])
       host['potential'] = self.estimatePotential(host)
       host['cpu_score'] = sum(float(x['cpu_percent'] + host['potential']) / len(host['cpu']) for x in host['workers'])
       nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
