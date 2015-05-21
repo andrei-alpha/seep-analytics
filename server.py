@@ -78,7 +78,7 @@ if __name__ == '__main__':
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
   config = config['Basic']
-  log = logger.Logger('Scheduler')
+  log = logger.Logger('Server')
 
   # TODO: check that the configuration is valid
   #if len(sys.argv) < 3 or not os.path.exists(sys.argv[1]) or not os.path.exists(sys.argv[2]) or (len(sys.argv) >= 4 and not os.path.exists(sys.argv[3])):  

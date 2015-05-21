@@ -262,6 +262,7 @@ $(function() {
   setInterval(function() {
     getClusterInfo();
   }, 5000);
+  getAvailableOptions();
 })
 
 function openView(view) {
@@ -284,7 +285,6 @@ function openView(view) {
   if (currentView == 'admin') {
     $('#graphs').css("display", "none");
     $('#admin-console').css("display", "block");
-    getAvailableOptions();
   } else {
     $('#admin-console').css("display", "none");
     $('#graphs').css("display", "block");

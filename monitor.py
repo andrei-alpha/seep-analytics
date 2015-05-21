@@ -262,7 +262,7 @@ if __name__ == '__main__':
   #if len(sys.argv) != 5 or not os.path.exists(sys.argv[3]) or not os.path.exists(sys.argv[4]):
   #  print usage
   #  exit(0)
-  log = logger.Logger('Scheduler')
+  log = logger.Logger('Monitor')
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
   config = config['Basic']
