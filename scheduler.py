@@ -127,8 +127,8 @@ class Scheduler:
     dispatcher.checkPending(report)
     self.updates.append(report)
 
-  def estimatePotential(self, host):
-    return max(0, host['avg_cpu'] - 60)
+  def estimatePotential(self, avg_cpu):
+    return max(0, avg_cpu - 60)
 
   def schedule(self):
     # Assign some resource consumtion scores based on a greedy algorithm
@@ -138,7 +138,7 @@ class Scheduler:
       if 'wombat07' in host['host']:
         continue
       host['avg_cpu'] = host['avg_cpu'] + dispatcher.getEstimation(host['host']) / len(host['cpu'])
-      host['potential'] = self.estimatePotential(host)
+      host['potential'] = self.estimatePotential(host['avg_cpu'])
       host['cpu_score'] = sum(float(x['cpu_percent'] + host['potential']) / len(host['cpu']) for x in host['workers'])
       nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
       host['cpu_score'] += (0 if nonSeepCpu < 10 else host['potential']) + nonSeepCpu
@@ -149,10 +149,12 @@ class Scheduler:
       log.debug(host['host'], 'avg_cpu:', host['avg_cpu'], 'cpu_score:', host['cpu_score'], map(lambda x: {x['data.port']: x['cpu_percent']}, host['workers']))
 
       # cpu score represent actual plus extra estimation utilization
-      if host['cpu_score'] < config.getint('Scheduler', 'migration.from.score'):
+      if not len(host['workers']) or host['cpu_score'] < config.getint('Scheduler', 'migration.from.score'):
         continue
       worker = max(host['workers'], key=lambda x: x['cpu_percent'])
       worker['cpu_score'] = worker['cpu_percent'] + host['potential']
+      worker['source_cpu_score'] = host['cpu_score']
+      worker['source_cpu_len'] = len(host['cpu'])
       worker['source'] = host['host']
       workersToMove.append(worker)
       log.debug('selected', worker['data.port'] + ':' + str(worker['cpu_percent']), worker['cpu_score'])
@@ -161,14 +163,24 @@ class Scheduler:
     workersToMove = sorted(workersToMove, key=lambda x: x['cpu_score'], reverse=True)
       
     for host in hosts:
-      if host['cpu_score'] > config.getint('Scheduler', 'migration.to.score') or not len(workersToMove):
+      if host['cpu_score'] > config.getint('Scheduler', 'migration.to.score'):
         break
-      worker = workersToMove.pop()
-      request = {'id': worker['data.port'],
-        'master.ip': worker['master.ip'], 'value': worker['cpu_percent'],
-        'master.scheduler.port': worker['master.scheduler.port'],
-        'destination': host['host'], 'source': worker['source']}
-      dispatcher.add(request)
+      while len(workersToMove):
+        worker = workersToMove.pop()
+        # Calculate the effect of moving this job and see if it's worth it
+        newPotential = self.estimatePotential(host['avg_cpu'] + worker['cpu_percent'] / len(host['cpu']))
+        newWorkers = [x for y in zip(host['workers'],[worker]) for x in y]
+        newCpuScoreDest = sum(float(x['cpu_percent'] + newPotential) / len(host['cpu']) for x in newWorkers)
+        newCpuScoreSrc = worker['source_cpu_score'] - worker['cpu_score'] / worker['source_cpu_len']
+        if worker['source_cpu_score'] - newCpuScoreDest < config.getint('Scheduler', 'min.movment.score.difference'):
+          continue
+
+        request = {'id': worker['data.port'],
+          'master.ip': worker['master.ip'], 'value': worker['cpu_percent'],
+          'master.scheduler.port': worker['master.scheduler.port'],
+          'destination': host['host'], 'source': worker['source']}
+        dispatcher.add(request)
+        break
 
   def run(self):
     while self.working:
