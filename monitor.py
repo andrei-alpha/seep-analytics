@@ -1,3 +1,4 @@
+import configparser
 import json
 import psutil
 import os
@@ -78,7 +79,7 @@ class WatcherThread:
     self.working = True
     while self.working:
       self.scan()
-      self.sleep(30)
+      self.sleep(config.getint('monitor.logs.scan.interval'))
 
   def stop(self):
     print 'Stoping watcher thread...'
@@ -195,7 +196,7 @@ class ResourceThread:
     self.working = True
     while self.working:
       self.scan()
-      self.sleep(5)
+      self.sleep(config.getint('monitor.resources.scan.interval'))
 
   def stop(self):
     print 'Stoping resource thread...'
@@ -255,19 +256,26 @@ def server_status():
 
 # Main entry point
 if __name__ == '__main__':
-  usage = 'We want as arguments: 1) host 2) port 3) absolute path to userlogs directory 4) absolute path to SEEPng directory'
-  if len(sys.argv) != 5 or not os.path.exists(sys.argv[3]) or not os.path.exists(sys.argv[4]):
-    print usage
-    exit(0)
+  #usage = 'We want as arguments: 1) host 2) port 3) absolute path to userlogs directory 4) absolute path to SEEPng directory'
+  #if len(sys.argv) != 5 or not os.path.exists(sys.argv[3]) or not os.path.exists(sys.argv[4]):
+  #  print usage
+  #  exit(0)
+  config = configparser.SafeConfigParser()
+  config.read('analytics.properties')
+  config = config['Basic']
+  if '~' in config['hadoop.userlogs']:
+    config['hadoop.userlogs'] = os.path.expanduser(config.get('hadoop.userlogs'))
+  if '~' in config['seep.root']:
+    config['seep.root'] = os.path.expanduser(config.get('seep.root'))
 
-  host = 'http://' + sys.argv[1] + ':' + sys.argv[2]
-  path = os.path.abspath(sys.argv[3])
+  host = 'http://' + config.get('server.host') + ':' + config.get('server.port')
+  path = os.path.abspath(config.get('hadoop.userlogs'))
   prefix = path[:path.find('/logs')]
-  seep_root = os.path.abspath(sys.argv[4])
+  seep_root = os.path.abspath(config.get('seep.root'))
 
   startWatcherThread(host, path, prefix)
   startResourceThread(host, seep_root)
 
-app.run(host=gethostname(), port=7008, reloader=False)
+app.run(host=gethostname(), port=config['monitor.port'], reloader=False)
 globalWatcherThread.stop()
 globalResourceThread.stop()

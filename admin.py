@@ -15,7 +15,7 @@ class Globals:
     expectedTime = None
     baseProgress = None
     allocatedPercentage = None
-    schedulerPort = 7009
+    schedulerPort = None
     clusterInfo = {}
     timeEstimations = {
         'Stopping all seep queries...': 2,
@@ -31,11 +31,9 @@ seep_root = None
 analytics_root = None
 hosts_names = None
 hosts = None
-
-
-baseYarnWorkerMasterPort = 4500
-baseYarnWorkerDataPort = 6000
-baseYarnSchedulerPort = 3500
+baseYarnWorkerMasterPort = None
+baseYarnWorkerDataPort = None
+baseYarnSchedulerPort = None
 
 def updateProgress(val, resetVal=False):
     if resetVal:
@@ -273,6 +271,7 @@ def updateResourceReport(data):
     # Send the information to scheduler
     sendRequest('http://' + os.uname()[1] + ':' + str(Globals.schedulerPort), '/scheduler/event', {'data': json.dumps(cInfo)}, 'post')
 
+# TODO: remove this function after debuging is complete
 def moke(data, dataPortToWorkerMap):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     msg = ''

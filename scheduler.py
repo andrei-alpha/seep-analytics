@@ -6,6 +6,7 @@ import bottle
 import socket
 import requests
 import threading
+import configparser
 
 import Queue
 
@@ -18,8 +19,10 @@ class RequestDispatcher:
   def __init__(self):
     self.working = True
     self.requests = Queue.Queue()
+    self.postponedRequests = Queue.Queue()
     self.pending = {}
     self.estimate = {}
+    self.lastSentPerHost = {}
 
   def stop(self):
     print 'Stoping request distpatcher thread...'
@@ -36,15 +39,20 @@ class RequestDispatcher:
     return 'request W' + request['id'] + ' from ' + request['source'] + ' to ' + request['destination']
 
   def send(self, request):
+    if request['master.scheduler.port'] in self.lastSentPerHost:
+      timeDelta = int(time.time() - self.lastSentPerHost[request['master.scheduler.port']])
+      if timeDelta < config['Scheduler']['scheduling.appmaster.interval']:
+        postponedRequests.put(request)
+        return
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
       s.connect((request['master.ip'], int(request['master.scheduler.port'])))
-      if 'wombat' in request['destination'] and not '.doc.res.ic.ac.uk' in request['destination']:
-        request['destination'] += '.doc.res.ic.ac.uk'
-      s.sendall('migrate,' + request['id'] + ',' + request['destination'])
+      s.sendall('migrate,' + request['id'] + ',' + request['destination'] + ('.doc.res.ic.ac.uk' if 'wombat' in request['destination'] else ''))
       self.setEstimation(request['source'], request['destination'], request['value'])
       print 'Dispached', self.printRequest(request)
       request['time'] = time.time()
+      self.lastSentPerHost[request['master.scheduler.port']] = request['time']
       self.pending[request['id']] = request
     except:
       print 'Request', request, 'failed!'
@@ -69,17 +77,26 @@ class RequestDispatcher:
       request = self.pending[wid]
       dest = request['destination']
       # If we see the worker running on the destination host, remove the request
-      if wid in widToHostMap[dest]:
+      if wid in widToHostMap and widToHostMap[wid] == dest:
         timeDelta = int(time.time() - request['time'])
         self.setEstimation(request['source'], request['destination'], -request['value'])
         print 'Completed', self.printRequest(request), 'after', timeDelta, 'seconds'
         del self.pending[wid]
+
+    for wid in self.pending.keys():
+      request = self.pending[wid]
+      timeDelta = int(time.time() - request['time'])
+      if timeDelta > 30:
+          print 'Failed', self.printRequest(request)
+          del self.pending[wid]
 
   def run(self):
     while self.working:
       while not self.requests.empty():
         request = self.requests.get()
         self.send(request)
+      while not self.postponedRequests.empty():
+        self.request.put(self.postponedRequests.get())
       time.sleep(1)
 
 class Scheduler:
@@ -114,7 +131,7 @@ class Scheduler:
       host['potential'] = self.estimatePotential(host)
       host['cpu_score'] = sum(float(x['cpu_percent'] + host['potential']) / len(host['cpu']) for x in host['workers'])
       nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
-      host['cpu_score'] += (0 if nonSeepCpu > 5 else host['potential']) + nonSeepCpu
+      host['cpu_score'] += (0 if nonSeepCpu < 10 else host['potential']) + nonSeepCpu
       hosts.append(host)
 
     workersToMove = []
@@ -122,7 +139,7 @@ class Scheduler:
       print host['host'], 'avg_cpu:', host['avg_cpu'], 'cpu_score:', host['cpu_score'], map(lambda x: {x['data.port']: x['cpu_percent']}, host['workers'])
 
       # cpu score represent actual plus extra estimation utilization
-      if host['cpu_score'] < 100:
+      if host['cpu_score'] < config.getint('Scheduler', 'migration.from.score'):
         continue
       worker = max(host['workers'], key=lambda x: x['cpu_percent'])
       worker['cpu_score'] = worker['cpu_percent'] + host['potential']
@@ -131,11 +148,11 @@ class Scheduler:
 
       print 'selected', worker['data.port'] + ':' + str(worker['cpu_percent']), worker['cpu_score']
 
-    hosts = sorted(hosts, key=lambda x: x['cpu_score'], reverse=True)
-    workersToMove = sorted(workersToMove, key=lambda x: x['cpu_score'])
+    hosts = sorted(hosts, key=lambda x: x['cpu_score'])
+    workersToMove = sorted(workersToMove, key=lambda x: x['cpu_score'], reverse=True)
       
     for host in hosts:
-      if host['cpu_score'] > 95 or not len(workersToMove):
+      if host['cpu_score'] > config.getint('Scheduler', 'migration.to.score') or not len(workersToMove):
         break
       worker = workersToMove.pop()
       request = {'id': worker['data.port'],
@@ -147,9 +164,10 @@ class Scheduler:
   def run(self):
     while self.working:
       self.report = (self.updates[-1] if len(self.updates) else {})
-      self.schedule()
+      if config.getint('Scheduler', 'runtime.scheduling.enabled'):
+        self.schedule()
       self.updates = []
-      self.sleep(2)
+      self.sleep(config.getint('Scheduler', 'scheduling.interval'))
 
 @app.route('/scheduler/event', method='post')
 def scheduler_evet():
@@ -178,12 +196,20 @@ def scheduler_host():
   cInfo[node]['allocations'] += 1
   cInfo[node]['score'] = computeBusyScore(cInfo[node])
   return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')'''
-  return 'wombat01.doc.res.ic.ac.uk'
 
-scheduler = Scheduler()
-dispatcher = RequestDispatcher()
+  if config.getint('Scheduler', 'startup.scheduling.value') == 1:
+    return 'wombat01.doc.res.ic.ac.uk'
+  elif config.getint('Scheduler', 'startup.scheduling.value') == 0:
+    return None
+  else:
+    print 'TO DO'
+    pass
 
 if __name__ == "__main__":
+  scheduler = Scheduler()
+  dispatcher = RequestDispatcher()
+  config = configparser.SafeConfigParser()
+  config.read('analytics.properties')
   t = threading.Thread(target=scheduler.run)
   t.deamon = True
   t.start()
@@ -191,6 +217,6 @@ if __name__ == "__main__":
   t.deamon = True
   t.start()
 
-app.run(host=gethostname(), port=7009, reloader=False)
+app.run(host=gethostname(), port=config.getint('Basic', 'scheduler.port'), reloader=False)
 scheduler.stop()
 dispatcher.stop()

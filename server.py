@@ -1,5 +1,6 @@
 import bottle
 import copy
+import configparser
 import datetime
 import json
 import os
@@ -27,7 +28,7 @@ dataPortToContainerIdMap = {}
 dataPortToWorkerMap = {}
 
 EVENTS_PER_SECOND = 'events per second'
-LAST_DATAPOINTS = 40
+LAST_DATAPOINTS = None
 GENERAL = 'Total'
 AVERAGE = 'Average'
 STATISTICS = 'Statistics'
@@ -69,21 +70,27 @@ except ImportError:
 
 
 if __name__ == '__main__':
-  usage = ("We want as arguments:\n 1) hosts file (required)\n 2) SEEP root "
-           "directory (required)\n 3) Analytics directory (default is current "
-           "directory)\n 4) Base seep-master port (default is 4500)\n 5) Base "
-           "seep-worker port (default is 6000)")
-  
-  if len(sys.argv) < 3 or not os.path.exists(sys.argv[1]) or not os.path.exists(sys.argv[2]) or (len(sys.argv) >= 4 and not os.path.exists(sys.argv[3])):  
-    print usage
-    exit(0)
+  #usage = ("We want as arguments:\n 1) hosts file (required)\n 2) SEEP root "
+  #         "directory (required)\n 3) Analytics directory (default is current "
+  #         "directory)\n 4) Base seep-master port (default is 4500)\n 5) Base "
+  #         "seep-worker port (default is 6000)")
+  config = configparser.SafeConfigParser()
+  config.read('analytics.properties')
+  config = config['Basic']
 
-  admin.hosts_names = map(lambda x: x.strip(), open(sys.argv[1], 'r').read().split('\n'))
-  admin.hosts = map(lambda x: 'http://' + x + ':7008', filter(lambda x: len(x) > 4, admin.hosts_names))
-  admin.seep_root = os.path.abspath(sys.argv[2])
-  admin.analytics_root = os.path.abspath(sys.argv[3] if len(sys.argv) >= 4 else '.')
-  admin.baseYarnWorkerMasterPort = (int(sys.argv[4]) if len(sys.argv) >= 5 else admin.baseYarnWorkerMasterPort)
-  admin.baseYarnWorkerDataPort = (int(sys.argv[5]) if len(sys.argv) >= 6 else admin.baseYarnWorkerDataPort)
+  # TODO: check that the configuration is valid
+  #if len(sys.argv) < 3 or not os.path.exists(sys.argv[1]) or not os.path.exists(sys.argv[2]) or (len(sys.argv) >= 4 and not os.path.exists(sys.argv[3])):  
+  #  print usage
+  #  exit(0)
+  admin.hosts_names = map(lambda x: x.strip(), config.get('hosts').split(','))
+  admin.hosts = map(lambda x: 'http://' + x + ':' + str(config.getint('monitor.port')), filter(lambda x: len(x) > 4, admin.hosts_names))
+  admin.seep_root = os.path.abspath(os.path.expanduser(config.get('seep.root')))
+  admin.analytics_root = os.path.abspath(os.path.expanduser(config.get('analytics.root')))
+  admin.baseYarnWorkerMasterPort = config.getint('base.yarn.worker.master.port')
+  admin.baseYarnWorkerDataPort = config.getint('base.yarn.worker.data.port')
+  admin.baseYarnSchedulerPort = config.getint('base.yarn.scheduler.port')
+  LAST_DATAPOINTS = config.getint('last.datapoints')
+  admin.Globals.schedulerPort = config.getint('scheduler.port')
 
 def format_links(links):
   html = '<table>'
@@ -433,5 +440,5 @@ def logs(url):
 admin.sendCommand(None, 'reset')
 #@do_profile(follow=[event, update, updateStatistics, updateClusterData, updateAppData, updateContainerData, admin.updateResourceReport, admin.getAvailableOptions])
 #def main_wrapper():
-app.run(host=gethostname(), port=7007, reloader=True)
+app.run(host=gethostname(), port=config.getint('server.port'), reloader=True)
 #main_wrapper()
