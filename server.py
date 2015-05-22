@@ -77,22 +77,21 @@ if __name__ == '__main__':
   #         "seep-worker port (default is 6000)")
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
-  config = config['Basic']
   log = logger.Logger('Server')
 
   # TODO: check that the configuration is valid
   #if len(sys.argv) < 3 or not os.path.exists(sys.argv[1]) or not os.path.exists(sys.argv[2]) or (len(sys.argv) >= 4 and not os.path.exists(sys.argv[3])):  
   #  print usage
   #  exit(0)
-  admin.hosts_names = map(lambda x: x.strip(), config.get('hosts').split(','))
-  admin.hosts = map(lambda x: 'http://' + x + ':' + str(config.getint('monitor.port')), filter(lambda x: len(x) > 4, admin.hosts_names))
-  admin.seep_root = os.path.abspath(os.path.expanduser(config.get('seep.root')))
-  admin.analytics_root = os.path.abspath(os.path.expanduser(config.get('analytics.root')))
-  admin.baseYarnWorkerMasterPort = config.getint('base.yarn.worker.master.port')
-  admin.baseYarnWorkerDataPort = config.getint('base.yarn.worker.data.port')
-  admin.baseYarnSchedulerPort = config.getint('base.yarn.scheduler.port')
-  LAST_DATAPOINTS = config.getint('last.datapoints')
-  admin.Globals.schedulerPort = config.getint('scheduler.port')
+  admin.hosts_names = map(lambda x: x.strip(), config.get('Basic', 'hosts').split(','))
+  admin.hosts = map(lambda x: 'http://' + x + ':' + str(config.getint('Basic', 'monitor.port')), filter(lambda x: len(x) > 4, admin.hosts_names))
+  admin.seep_root = os.path.abspath(os.path.expanduser(config.get('Basic', 'seep.root')))
+  admin.analytics_root = os.path.abspath(os.path.expanduser(config.get('Basic', 'analytics.root')))
+  admin.baseYarnWorkerMasterPort = config.getint('Basic', 'base.yarn.worker.master.port')
+  admin.baseYarnWorkerDataPort = config.getint('Basic', 'base.yarn.worker.data.port')
+  admin.baseYarnSchedulerPort = config.getint('Basic', 'base.yarn.scheduler.port')
+  LAST_DATAPOINTS = config.getint('Basic', 'last.datapoints')
+  admin.Globals.schedulerPort = config.getint('Basic', 'scheduler.port')
   admin.Globals.log = log
 
 def format_links(links):
@@ -406,7 +405,10 @@ def server_command(command):
 
 @app.route('/options')
 def server_options():
-  return json.dumps(admin.getAvailableOptions())
+  options = admin.getAvailableOptions()
+  options['startup-scheduler-type'] = config.get('Scheduler', 'startup.scheduling.type')
+  options['runtime-scheduler'] = config.get('Scheduler', 'runtime.scheduling.enabled')
+  return json.dumps(options)
 
 @app.route('/command/resource_report')
 def server_get_info():
@@ -418,6 +420,16 @@ def server_get_info():
     clusterInfo['overall']['current_rate'] = dataset['cluster'][GENERAL]['data'][-1]['1-minute rate']
   response.content_type = 'application/json'
   return clusterInfo
+
+@app.route('/command/set_config', method='post')
+def server_set_config():
+  section = request.forms.get('section')
+  name = request.forms.get('name')
+  value = request.forms.get('value')
+  if section == 'Scheduler':
+    schedulerHost = 'http://' + os.uname()[1] + ':' + str(config.getint('Basic', 'scheduler.port'))
+    admin.sendRequest(schedulerHost, '/command/set_config', {'name': name, 'value': value}, 'post')
+    config.set(section, name, value)
 
 # This is a debug command to communicate with seep workers
 @app.route('/moke/sudo', method='post')
@@ -443,5 +455,5 @@ def logs(url):
 admin.sendCommand(None, 'reset')
 #@do_profile(follow=[event, update, updateStatistics, updateClusterData, updateAppData, updateContainerData, admin.updateResourceReport, admin.getAvailableOptions])
 #def main_wrapper():
-app.run(host=gethostname(), port=config.getint('server.port'), reloader=True)
+app.run(host=gethostname(), port=config.getint('Basic', 'server.port'), reloader=True)
 #main_wrapper()

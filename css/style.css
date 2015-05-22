@@ -49,6 +49,13 @@ body {
 	width: 53%;
 }
 
+#startup-scheduler-type {
+	width: 200px;
+}
+#runtime-scheduler {
+	width: 200px;
+}
+
 .operator {
 	border-style: solid;
 	border-width: 1px;

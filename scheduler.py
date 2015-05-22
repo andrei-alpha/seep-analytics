@@ -112,6 +112,8 @@ class Scheduler:
   def __init__(self):
     self.report = {}
     self.updates = []
+    self.allocations = {}
+    self.lastReport = None
     self.working = True
 
   def sleep(self, seconds):
@@ -124,6 +126,7 @@ class Scheduler:
     self.working = False
 
   def reportResources(self, report):
+    self.lastReport = report
     dispatcher.checkPending(report)
     self.updates.append(report)
 
@@ -195,6 +198,24 @@ class Scheduler:
       self.updates = []
       self.sleep(config.getint('Scheduler', 'scheduling.interval'))
 
+  def allocate(self):
+    if not self.lastReport or len(self.lastReport) == 0:
+      return None
+
+    preferredNodes = []
+    for host in self.lastReport.values():
+      # If we have at least 3 hosts don't allocate on the current node
+      if len(self.lastReport) > 3 and os.uname()[1] in host:
+        continue
+      score = (host['avg_cpu'] / 20) + self.allocations.get(host['host'], 0)
+      preferredNodes.append([score, host['host']])
+    preferredNodes.sort()
+  
+    node = preferredNodes[0][1]
+    # Assume we will allocate a container already
+    self.allocations[node] =  self.allocations.get(node, 0) + 1
+    return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
+
 @app.route('/scheduler/event', method='post')
 def scheduler_evet():
   data = json.loads(request.forms.get('data'))
@@ -205,31 +226,19 @@ def computeBusyScore(data):
 
 @app.route('/scheduler/host')
 def scheduler_host():
-  '''preferredNodes = []
-  cInfo = Globals.clusterInfo['hosts']
-  if len(Globals.clusterInfo['hosts']) == 0:
-    return '*'
-
-  for host in cInfo:
-    # If we have at least 3 hosts don't allocate on the current node
-    if len(cInfo) > 3 and os.uname()[1] in host:
-      continue
-    preferredNodes.append([cInfo[host]['score'], host])
-  preferredNodes.sort()
-  
-  node = preferredNodes[0][1]
-  # Assume we will allocate a container already
-  cInfo[node]['allocations'] += 1
-  cInfo[node]['score'] = computeBusyScore(cInfo[node])
-  return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')'''
-
-  if config.getint('Scheduler', 'startup.scheduling.type') == 1:
-    return 'wombat01.doc.res.ic.ac.uk'
-  elif config.getint('Scheduler', 'startup.scheduling.type') == 0:
+  if config.getint('Scheduler', 'startup.scheduling.type') == 0:
+    return ('wombat01.doc.res.ic.ac.uk' if 'wombat' in os.uname()[1] else os.uname()[1])
+  elif config.getint('Scheduler', 'startup.scheduling.type') == 1:
     return None
   else:
-    print 'TO DO'
-    pass
+    return scheduler.allocate()
+
+@app.route('/command/set_config', method='post')
+def server_set_config():
+  section = request.forms.get('section')
+  name = request.forms.get('name')
+  value = request.forms.get('value')
+  config.set('Scheduler', name, value)
 
 if __name__ == "__main__":
   scheduler = Scheduler()

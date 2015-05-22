@@ -44,6 +44,14 @@ function sendCommand(command, data) {
   });
 }
 
+function setConfig(section, name, value) {
+  $.ajax({
+    url: "/command/set_config",
+    data: {'section': section, 'name': name, 'value': value},
+    type: "post",
+  });
+}
+
 function bytesToSize(bytes) {
   var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   if (bytes == 0) return '0 Byte';
@@ -372,6 +380,15 @@ function getAvailableOptions() {
     type: "get",
     success: function(response) {
     	for (key in response) {
+        if (key == 'runtime-scheduler') {
+          $('#runtime-scheduler').val(response[key])
+          continue;
+        }
+        if (key == 'startup-scheduler-type') {
+          $('#startup-scheduler-type').val(response[key])
+          continue;
+        }
+
         $('#' + key).html('');
         for (var i = 0; i < response[key].length; ++i) {
     		  $('#' + key).append('<option class="option">' + response[key][i] + '</option>')

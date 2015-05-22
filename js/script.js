@@ -263,6 +263,17 @@ $(function() {
     getClusterInfo();
   }, 5000);
   getAvailableOptions();
+
+  $('#startup-scheduler-type').change(function() {
+    var name = 'startup.scheduling.type';
+    var value = $("#startup-scheduler-type option:selected").val();
+    setConfig('Scheduler', name, value);
+  })
+  $('#runtime-scheduler').change(function() {
+    var name = 'runtime.scheduling.enabled';
+    var value = $("#runtime-scheduler option:selected").val();
+    setConfig('Scheduler', name, value);
+  })
 })
 
 function openView(view) {
@@ -275,10 +286,12 @@ function openView(view) {
 
   if (currentView == "resources") {
     $('#nav-tabs').css("display", "block");
+    $('#scheduler-options').css("display", "block");
   } else {
     addedOperatorsCountPerHost = {};
     $('#operators-tab').html('');
     $('.nav-tabs a[href="#resources-tab"]').tab('show');
+    $('#scheduler-options').css("display", "none");
     $('#nav-tabs').css("display", "none");
   }
 
