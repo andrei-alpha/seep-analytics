@@ -96,8 +96,9 @@ class RequestDispatcher:
       request = self.pending[wid]
       timeDelta = int(time.time() - request['time'])
       if timeDelta > 30:
-          log.warn('Failed', self.printRequest(request))
-          del self.pending[wid]
+        self.setEstimation(request['source'], request['destination'], -request['value'])
+        log.warn('Failed', self.printRequest(request))
+        del self.pending[wid]
 
   def run(self):
     while self.working:
@@ -184,8 +185,8 @@ class Scheduler:
           continue
 
         request = {'id': worker['data.port'],
-          'master.ip': worker['master.ip'], 'value': worker['cpu_percent'],
-          'master.scheduler.port': worker['master.scheduler.port'],
+          'master.ip': worker.get('master.ip'. None), 'value': worker['cpu_percent'],
+          'master.scheduler.port': worker.get('master.scheduler.port', None),
           'destination': host['host'], 'source': worker['source']}
         dispatcher.add(request)
         break
@@ -207,11 +208,10 @@ class Scheduler:
       # If we have at least 3 hosts don't allocate on the current node
       if len(self.lastReport) > 3 and os.uname()[1] in host:
         continue
-      score = (host['avg_cpu'] / 20) + self.allocations.get(host['host'], 0)
-      preferredNodes.append([score, host['host']])
+      preferredNodes.append([int(host['avg_cpu'] / 20), self.allocations.get(host['host'], 0), host['host']])
     preferredNodes.sort()
   
-    node = preferredNodes[0][1]
+    node = preferredNodes[0][2]
     # Assume we will allocate a container already
     self.allocations[node] =  self.allocations.get(node, 0) + 1
     return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
