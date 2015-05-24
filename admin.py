@@ -227,15 +227,11 @@ def submitQuery(queryName, deploymentSize):
     updateTask('Deploy seep queries...')
     updateProgress(100)
 
-def clearKafkaLogs():
-    updateTask('Deleting Kafka Logs...', 100)
-    for host in hosts:
-        sendCommand(host, 'bash kafka-log-cleaner.sh', seep_root + '/deploy')
-    for host in hosts:
-        getStatus(host, True)
-        updateProgress(Globals.adminProgress + 1.0 / len(hosts))
-
-    updateTask('Deleting Kafka Logs - Done')
+def resetKafka():
+    updateTask('Reseting Kafka...', 100)
+    process = subprocess.Popen(['bash', 'kaf-reset.sh'], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process.communicate()
+    updateTask('Reseting Kafka - Done')
     updateProgress(100)
 
 def clearHadoopLogs():

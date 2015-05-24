@@ -365,8 +365,8 @@ function updateAnalytics() {
 	sendCommand('update_analytics', data)
 }
 
-function clearKafkaLogs() {
-  sendCommand('clear_kafka_logs', {});
+function resetKafka() {
+  sendCommand('reset_kafka', {});
 }
 
 function clearHadoopLogs() {

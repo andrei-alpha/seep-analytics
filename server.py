@@ -38,7 +38,7 @@ SUBMIT_QUERY = 'submit_query'
 UPDATE_SEEP = 'update_seep'
 UPDATE_ANALYTICS = 'update_analytics'
 KILL_ALL_SEEP = 'kill_all_seep'
-CLEAR_KAFKA_LOGS = 'clear_kafka_logs'
+RESET_KAFKA = 'reset_kafka'
 CLEAR_HADOOP_LOGS = 'clear_hadoop_logs'
 
 
@@ -393,8 +393,8 @@ def server_command(command):
     t = threading.Thread(target=admin.updateAnalytics, args=(data['branch'],))
   elif command == SUBMIT_QUERY:
     t = threading.Thread(target=admin.submitQuery, args=(data['queryName'], int(data['deploymentSize'])))
-  elif command == CLEAR_KAFKA_LOGS:
-    t = threading.Thread(target=admin.clearKafkaLogs)
+  elif command == RESET_KAFKA:
+    t = threading.Thread(target=admin.resetKafka)
   elif command == CLEAR_HADOOP_LOGS:
     t = threading.Thread(target=admin.clearHadoopLogs)
   else:

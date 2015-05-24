@@ -185,7 +185,7 @@ class Scheduler:
           continue
 
         request = {'id': worker['data.port'],
-          'master.ip': worker.get('master.ip'. None), 'value': worker['cpu_percent'],
+          'master.ip': worker.get('master.ip', None), 'value': worker['cpu_percent'],
           'master.scheduler.port': worker.get('master.scheduler.port', None),
           'destination': host['host'], 'source': worker['source']}
         dispatcher.add(request)
@@ -206,7 +206,7 @@ class Scheduler:
     preferredNodes = []
     for host in self.lastReport.values():
       # If we have at least 3 hosts don't allocate on the current node
-      if len(self.lastReport) > 3 and os.uname()[1] in host:
+      if len(self.lastReport) > 3 and os.uname()[1] in host['host']:
         continue
       preferredNodes.append([int(host['avg_cpu'] / 20), self.allocations.get(host['host'], 0), host['host']])
     preferredNodes.sort()
@@ -214,6 +214,7 @@ class Scheduler:
     node = preferredNodes[0][2]
     # Assume we will allocate a container already
     self.allocations[node] =  self.allocations.get(node, 0) + 1
+    log.info('Allocate on node: ', preferredNodes[0])
     return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
 
 @app.route('/scheduler/event', method='post')
