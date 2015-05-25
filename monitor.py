@@ -157,6 +157,15 @@ class ResourceThread:
       self.procs.remove(proc)
     return workers
 
+  def getClusterMetrics(self):
+    try:
+      res = requests.get('http://' + config['yarn.host'] + ':8088/ws/v1/cluster/metrics')
+      data = json.loads(res.text)
+      return data['clusterMetrics']
+    except requests.ConnectionError:
+      log.warn("Failed to get cluster metrics.")
+      return None
+
   def scan(self):
     mem = psutil.phymem_usage()
     self.info['memory'] = [mem.total, mem.percent]
@@ -191,12 +200,17 @@ class ResourceThread:
       self.info['logs'] = [0, 0]
     self.info['host'] = os.uname()[1]
     log.info('Resource Report', self.info)
+
+    if os.uname()[1] == config['yarn.host']:
+      self.info['cluster_metrics'] = self.getClusterMetrics()
+
     payload = {'event': 'resource report', 'data': json.dumps(self.info)}
     send(self, payload)
 
   def run(self):
     self.working = True
     while self.working:
+      startTimestamp = time.time()
       self.scan()
       self.sleep(config.getint('monitor.resources.scan.interval'))
 

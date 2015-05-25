@@ -208,10 +208,10 @@ class Scheduler:
       # If we have at least 3 hosts don't allocate on the current node
       if len(self.lastReport) > 3 and os.uname()[1] in host['host']:
         continue
-      preferredNodes.append([int(host['avg_cpu'] / 20), self.allocations.get(host['host'], 0), host['host']])
+      preferredNodes.append([int(host['avg_cpu'] / 10) + self.allocations.get(host['host'], 0), host['host']])
     preferredNodes.sort()
   
-    node = preferredNodes[0][2]
+    node = preferredNodes[0][1]
     # Assume we will allocate a container already
     self.allocations[node] =  self.allocations.get(node, 0) + 1
     log.info('Allocate on node: ', preferredNodes[0])
@@ -241,12 +241,19 @@ def server_set_config():
   value = request.forms.get('value')
   config.set('Scheduler', name, value)
 
+def update_configs():
+  res = requests.get('http://' + gethostname() + ':' + str(config.getint('Basic', 'server.port')) + '/command/get_config')
+  data = json.loads(res.text)
+  for name, value in data['Scheduler'].iteritems():
+    config.set('Scheduler', name, value)
+
 if __name__ == "__main__":
   scheduler = Scheduler()
   dispatcher = RequestDispatcher()
   log = logger.Logger('Scheduler')
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
+  update_configs()
   t = threading.Thread(target=scheduler.run)
   t.deamon = True
   t.start()

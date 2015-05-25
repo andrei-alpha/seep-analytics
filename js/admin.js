@@ -73,6 +73,8 @@ function updateAdminTable(data) {
   $('#tb-hadoop-logs').text(bytesToSize(data['hadoop_logs']));
   $('#tb-total-mem').text(bytesToSize(data['total_mem']));
   $('#tb-total-cpus').text(data['total_cpus']);
+  $('#td-queries-running').text(data['apps_running']);
+  $('#td-containers-running').text(data['containers_running']);
 
   var cpu_graph = $('#cpu-graph').highcharts();
   if (cpu_graph) {

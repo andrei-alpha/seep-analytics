@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import re
@@ -17,6 +18,7 @@ class Globals:
     allocatedPercentage = None
     schedulerPort = None
     clusterInfo = {}
+    yarnClusterMetrics = {}
     log = None
     timeEstimations = {
         'Stopping all seep queries...': 2,
@@ -253,7 +255,10 @@ def updateResourceReport(data):
     if not 'hosts' in cInfo:
         cInfo['hosts'] = {}
     data['avg_cpu'] = float(sum(data['cpu'])) / len(data['cpu'])
-    
+    if 'cluster_metrics' in data:
+        Globals.yarnClusterMetrics = copy.deepcopy(data['cluster_metrics'])
+        data.pop('cluster_metrics', None)
+
     cInfo['hosts'][host] = data
     cInfo['overall'] = {
         'total_mem': sum([cInfo['hosts'][host]['memory'][0] for host in cInfo['hosts']]),

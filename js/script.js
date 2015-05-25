@@ -34,6 +34,7 @@ function dataSelect(title, labels, dataset) {
   var MaxItems = 10;
   var previousTimestamp = -1;
   var start = 0;
+  
   for (var i = 0; i < labels.length; ++i) {
     if (previousTimestamp != -1 && labels[i] - previousTimestamp > 5 * 60 * 1000 /* 5 minutes */ ) {
       start = i;
@@ -46,7 +47,7 @@ function dataSelect(title, labels, dataset) {
       sum += dataset[i + j];
     var avg = sum / Math.min(filter, dataset.length - i);
     selectedData.push(avg);
-    selectedLabels.push(labels[Math.min(i + filter - 1, dataset.length)]);
+    selectedLabels.push(labels[Math.min(i + filter - 1, labels.length - 1)]);
   }
   return [selectedLabels, selectedData];
 }
@@ -61,7 +62,7 @@ function updateGraph(id, title, data) {
   if (chart == undefined || chart.series[0].data.length == 0) {
     populateGraph(id, title, data);
   }
- 
+
   var needsUpdate = false;
   for (var i = 0; i < chart.series[0].data.length; ++i) {
     if (chart.series[0].data[i].y != data[1][i] || chart.xAxis[0].categories[i] != data[0][i]) {
@@ -72,6 +73,9 @@ function updateGraph(id, title, data) {
   if (needsUpdate) {
     chart.series[0].setData(data[1]);
     chart.xAxis[0].setCategories(data[0]);
+  } else if(data[1].length > chart.series[0].data.length) {
+    console.log(data[0][data[0].length-1], data[1][data[1].length-1]);
+    chart.series[0].addPoint(data[1][data[1].length-1], data[0][data[0].length-1])    
   }
 }
 

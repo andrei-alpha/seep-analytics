@@ -418,6 +418,8 @@ def server_get_info():
   clusterInfo['overall']['total_events'] = totalEventsToDate
   if GENERAL in dataset['cluster'] and 'data' in dataset['cluster'][GENERAL] and len(dataset['cluster'][GENERAL]['data']):
     clusterInfo['overall']['current_rate'] = dataset['cluster'][GENERAL]['data'][-1]['1-minute rate']
+  clusterInfo['overall']['apps_running'] = admin.Globals.yarnClusterMetrics.get('appsRunning', None)
+  clusterInfo['overall']['containers_running'] = admin.Globals.yarnClusterMetrics.get('containersAllocated', None)
   response.content_type = 'application/json'
   return clusterInfo
 
@@ -430,6 +432,10 @@ def server_set_config():
     schedulerHost = 'http://' + os.uname()[1] + ':' + str(config.getint('Basic', 'scheduler.port'))
     admin.sendRequest(schedulerHost, '/command/set_config', {'name': name, 'value': value}, 'post')
     config.set(section, name, value)
+
+@app.route('/command/get_config')
+def server_get_config():
+  return json.dumps({'Basic': config._sections['Basic'], 'Scheduler': config._sections['Scheduler']})
 
 # This is a debug command to communicate with seep workers
 @app.route('/moke/sudo', method='post')
