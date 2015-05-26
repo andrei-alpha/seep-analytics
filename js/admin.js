@@ -345,7 +345,7 @@ function getClusterInfo() {
       }
       setTimeout(function() {
         getClusterInfo();
-      }, 5000);
+      }, 4000);
     }
   });
 }

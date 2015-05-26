@@ -44,7 +44,6 @@ class RequestDispatcher:
     if request['master.scheduler.port'] in self.lastSentPerHost:
       timeDelta = int(time.time() - self.lastSentPerHost[request['master.scheduler.port']])
       if timeDelta < config.getint('Scheduler', 'scheduling.appmaster.interval'):
-        print config.getint('Scheduler', 'scheduling.appmaster.interval'), self.lastSentPerHost[request['master.scheduler.port']], time.time()
         log.info("Postpone Request to AppMaster", request['master.scheduler.port'], 'last was sent', timeDelta, 'seconds ago.')
         self.postponedRequests.put(request)
         return
@@ -126,10 +125,20 @@ class Scheduler:
     log.info('Stoping scheduler thread...')
     self.working = False
 
-  def reportResources(self, report):
-    self.lastReport = report
-    dispatcher.checkPending(report)
-    self.updates.append(report)
+  def resetAllocations(self):
+    self.allocations = {}
+
+  def getResourceReport(self):
+    try:
+      res = requests.get('http://' + gethostname() + ':' + str(config.getint('Basic', 'server.port')) + '/command/scheduler_report')
+      if res.text == 'pending':
+        return
+      report = json.loads(res.text)['hosts']
+      self.lastReport = report
+      dispatcher.checkPending(report)
+      self.updates.append(report)
+    except requests.ConnectionError:
+      log.warn("Failed to get resource report!")
 
   def estimatePotential(self, avg_cpu):
     return max(0, avg_cpu - 60)
@@ -149,8 +158,10 @@ class Scheduler:
       hosts.append(host)
 
     workersToMove = []
+    hasSelected = False
+    resourceReport = '---------------- Resource Report --------------------\n'
     for host in hosts:
-      log.debug(host['host'], 'avg_cpu:', host['avg_cpu'], 'cpu_score:', host['cpu_score'], map(lambda x: {x['data.port']: x['cpu_percent']}, host['workers']))
+      resourceReport += '%s avg_cpu: %d cpu_score: %d op: %s\n' % (host['host'], host['avg_cpu'], host['cpu_score'], str(map(lambda x: {x['data.port']: x['cpu_percent']}, host['workers'])))
 
       # cpu score represent actual plus extra estimation utilization
       if not len(host['workers']) or host['cpu_score'] < config.getint('Scheduler', 'migration.from.score'):
@@ -164,7 +175,10 @@ class Scheduler:
       worker['source_cpu_len'] = len(host['cpu'])
       worker['source'] = host['host']
       workersToMove.append(worker)
-      log.debug('selected', worker['data.port'] + ':' + str(worker['cpu_percent']), worker['cpu_score'])
+      hasSelected = True
+
+    if hasSelected:
+      log.info(resourceReport)
 
     hosts = sorted(hosts, key=lambda x: x['cpu_score'])
     workersToMove = sorted(workersToMove, key=lambda x: x['cpu_score'], reverse=True)
@@ -176,11 +190,16 @@ class Scheduler:
         worker = workersToMove.pop()
         # Calculate the effect of moving this job and see if it's worth it
         newPotential = self.estimatePotential(host['avg_cpu'] + worker['cpu_percent'] / len(host['cpu']))
-        newWorkers = [x for y in zip(host['workers'],[worker]) for x in y]
+        newWorkers = [x for x in host['workers']]
+        newWorkers.append(worker)
         newCpuScoreDest = sum(float(x['cpu_percent'] + newPotential) / len(host['cpu']) for x in newWorkers)
-        nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in newWorkers)
+        nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
         newCpuScoreDest += (0 if nonSeepCpu < 10 else newPotential) + nonSeepCpu
         newCpuScoreSrc = worker['source_cpu_score'] - worker['cpu_score'] / worker['source_cpu_len']
+
+        log.debug('selected', worker['data.port'] + ':' + str(worker['cpu_percent']), worker['cpu_score'], worker['source'], '>', host['host'])
+        log.info('src.cpu.score:', worker['source_cpu_score'], 'dest.cpu.score:', newCpuScoreDest, 'new.potential:', newPotential, 'non.seep.cpu:', nonSeepCpu, 'op:', [x['data.port'] for x in newWorkers])
+
         if worker['source_cpu_score'] - newCpuScoreDest < config.getint('Scheduler', 'min.movment.score.difference'):
           continue
 
@@ -193,6 +212,7 @@ class Scheduler:
 
   def run(self):
     while self.working:
+      self.getResourceReport()
       self.report = (self.updates[-1] if len(self.updates) else {})
       if config.getint('Scheduler', 'runtime.scheduling.enabled'):
         self.schedule()
@@ -217,11 +237,6 @@ class Scheduler:
     log.info('Allocate on node: ', preferredNodes[0])
     return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
 
-@app.route('/scheduler/event', method='post')
-def scheduler_evet():
-  data = json.loads(request.forms.get('data'))
-  scheduler.reportResources(data['hosts'])
-
 def computeBusyScore(data):
   return data['avg_cpu']
 
@@ -239,13 +254,23 @@ def server_set_config():
   section = request.forms.get('section')
   name = request.forms.get('name')
   value = request.forms.get('value')
+  log.info('Set config', name, value)
   config.set('Scheduler', name, value)
 
+@app.route('/command/reset/allocations')
+def server_reset_allocations():
+  scheduler.resetAllocations()
+
 def update_configs():
-  res = requests.get('http://' + gethostname() + ':' + str(config.getint('Basic', 'server.port')) + '/command/get_config')
+  try:
+    res = requests.get('http://' + gethostname() + ':' + str(config.getint('Basic', 'server.port')) + '/command/get_config')
+  except requests.ConnectionError:
+    log.warn("Failed to get latest configs!")
+    return
   data = json.loads(res.text)
   for name, value in data['Scheduler'].iteritems():
     config.set('Scheduler', name, value)
+    log.info('Init config from server', name, value)
 
 if __name__ == "__main__":
   scheduler = Scheduler()

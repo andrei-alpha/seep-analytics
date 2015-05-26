@@ -412,16 +412,13 @@ def server_options():
 
 @app.route('/command/resource_report')
 def server_get_info():
-  if not admin.Globals.clusterInfo:
-      return 'pending'
-  clusterInfo = copy.deepcopy(admin.Globals.clusterInfo)
-  clusterInfo['overall']['total_events'] = totalEventsToDate
-  if GENERAL in dataset['cluster'] and 'data' in dataset['cluster'][GENERAL] and len(dataset['cluster'][GENERAL]['data']):
-    clusterInfo['overall']['current_rate'] = dataset['cluster'][GENERAL]['data'][-1]['1-minute rate']
-  clusterInfo['overall']['apps_running'] = admin.Globals.yarnClusterMetrics.get('appsRunning', None)
-  clusterInfo['overall']['containers_running'] = admin.Globals.yarnClusterMetrics.get('containersAllocated', None)
   response.content_type = 'application/json'
-  return clusterInfo
+  return admin.getClusterInfo(dataset['cluster'], totalEventsToDate)
+
+@app.route('/command/scheduler_report')
+def server_scheduler_report():
+  response.content_type = 'application/json'
+  return admin.getClusterInfo(dataset['cluster'].get(GENERAL), totalEventsToDate, True)
 
 @app.route('/command/set_config', method='post')
 def server_set_config():

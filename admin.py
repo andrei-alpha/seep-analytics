@@ -95,16 +95,20 @@ def sendRequest(host, path, data, type):
             Globals.log.warn('Failed for host:', host)
 
 def getStatus(host, readAll = False):
-    out = requests.get(host + '/status').text
-    while readAll:
-        res = requests.get(host + '/status').text
-        if res == 'pending':
-            time.sleep(1)
-            continue
-        if not res or len(res) == 0:
-            break
-        out += res
-    return out
+    try:
+        out = requests.get(host + '/status').text
+        while readAll:
+            res = requests.get(host + '/status').text
+            if res == 'pending':
+                time.sleep(1)
+                continue
+            if not res or len(res) == 0:
+                break
+            out += res
+        return out
+    except requests.ConnectionError:
+        Globals.log.warn('Failed to get status for host:', host)
+        return ''
 
 def getAvailableOptions():
     options = {}
@@ -148,6 +152,7 @@ def killAllSeepQueries():
 
     updateTask('Stopping all seep queries - Done')
     updateProgress(100)
+    sendRequest('http://' + os.uname()[1] + ':' + str(Globals.schedulerPort), '/command/reset/allocations', None, 'get')
 
 def updateAnalytics(branch):
     updateProgress(0, True)
@@ -258,8 +263,15 @@ def updateResourceReport(data):
     if 'cluster_metrics' in data:
         Globals.yarnClusterMetrics = copy.deepcopy(data['cluster_metrics'])
         data.pop('cluster_metrics', None)
-
     cInfo['hosts'][host] = data
+
+def getClusterInfo(dataset, totalEventsToDate, hostsOnly=False):
+    cInfo = Globals.clusterInfo
+    if not len(cInfo):
+        return 'pending'
+    if hostsOnly:
+        return cInfo
+
     cInfo['overall'] = {
         'total_mem': sum([cInfo['hosts'][host]['memory'][0] for host in cInfo['hosts']]),
         'total_cpus': sum([len(cInfo['hosts'][host]['cpu']) for host in cInfo['hosts']]),
@@ -269,9 +281,13 @@ def updateResourceReport(data):
         'net_io': [sum([cInfo['hosts'][host]['net_io'][0] for host in cInfo['hosts']]), sum([cInfo['hosts'][host]['net_io'][1] for host in cInfo['hosts']])],
         'kafka_logs': sum([cInfo['hosts'][host]['logs'][0] for host in cInfo['hosts']]) * 1024,
         'hadoop_logs': sum([cInfo['hosts'][host]['logs'][1] for host in cInfo['hosts']]) * 1024,
+        'total_events': totalEventsToDate,
+        'apps_running': Globals.yarnClusterMetrics.get('appsRunning', None),
+        'containers_running': Globals.yarnClusterMetrics.get('containersAllocated', None),
     }
-    # Send the information to scheduler
-    sendRequest('http://' + os.uname()[1] + ':' + str(Globals.schedulerPort), '/scheduler/event', {'data': json.dumps(cInfo)}, 'post')
+    if 'data' in dataset and len(dataset['data']) > 1:
+        cInfo['overall']['current_rate'] = dataset['data'][-2]['1-minute rate']
+    return cInfo
 
 # TODO: remove this function after debuging is complete
 def moke(data, dataPortToWorkerMap):
