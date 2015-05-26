@@ -86,6 +86,9 @@ function getDataset() {
     success: function(response){
       globalDataset = response;
       openView(currentView);
+      setTimeout(function() {
+        getDataset();
+      }, 10000);
     },
   });
 }
@@ -260,12 +263,6 @@ function updateGraphs(dataset, graphType) {
 
 $(function() {
   getDataset();
-  setInterval(function() {
-    getDataset();
-  }, 10000);
-  setInterval(function() {
-    getClusterInfo();
-  }, 5000);
   getAvailableOptions();
 
   $('#startup-scheduler-type').change(function() {

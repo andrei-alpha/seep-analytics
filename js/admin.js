@@ -343,6 +343,9 @@ function getClusterInfo() {
           updateOperatorsTable(response['hosts']);
         }
       }
+      setTimeout(function() {
+        getClusterInfo();
+      }, 5000);
     }
   });
 }
