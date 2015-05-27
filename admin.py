@@ -28,6 +28,9 @@ class Globals:
         'Compiling examples...': 7,
         'default': 5
     }
+    initBaseYarnWorkerMasterPort = None
+    initBaseYarnWorkerDataPort = None
+    initBaseYarnSchedulerPort = None
 
 # Need to be given as sys argument
 seep_root = None
@@ -152,6 +155,13 @@ def killAllSeepQueries():
 
     updateTask('Stopping all seep queries - Done')
     updateProgress(100)
+
+    # Reset ports numbers
+    global baseYarnWorkerMasterPort, baseYarnWorkerDataPort, baseYarnSchedulerPort
+    baseYarnWorkerMasterPort = Globals.initBaseYarnWorkerMasterPort
+    baseYarnWorkerDataPort = Globals.initBaseYarnWorkerDataPort
+    baseYarnSchedulerPort = Globals.initBaseYarnSchedulerPort
+
     sendRequest('http://' + os.uname()[1] + ':' + str(Globals.schedulerPort), '/command/reset/allocations', None, 'get')
 
 def updateAnalytics(branch):
@@ -220,9 +230,6 @@ def submitQuery(queryName, deploymentSize):
     totalSteps = deploymentSize * 5
     steps = 0
     for i in xrange(deploymentSize):
-        baseYarnWorkerMasterPort += 5
-        baseYarnWorkerDataPort += 5
-        baseYarnSchedulerPort += 1
         serverHost = 'http://' + os.uname()[1] + ':' + str(Globals.schedulerPort)
         process = subprocess.Popen(['bash', 'yarn.sh', queryName, str(baseYarnWorkerMasterPort), str(baseYarnWorkerDataPort),
             str(baseYarnSchedulerPort), serverHost], cwd=seep_root + '/deploy',  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -230,6 +237,9 @@ def submitQuery(queryName, deploymentSize):
             out = unblockingRead(process)
             steps += len(re.findall('SeepYarnAppSubmissionClient', out))
             updateProgress(float(steps) / float(totalSteps) * 100.0)
+        baseYarnWorkerMasterPort += 5
+        baseYarnWorkerDataPort += 5
+        baseYarnSchedulerPort += 1
 
     updateTask('Deploy seep queries...')
     updateProgress(100)

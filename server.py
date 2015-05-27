@@ -88,8 +88,11 @@ if __name__ == '__main__':
   admin.seep_root = os.path.abspath(os.path.expanduser(config.get('Basic', 'seep.root')))
   admin.analytics_root = os.path.abspath(os.path.expanduser(config.get('Basic', 'analytics.root')))
   admin.baseYarnWorkerMasterPort = config.getint('Basic', 'base.yarn.worker.master.port')
+  admin.Globals.initBaseYarnWorkerMasterPort = admin.baseYarnWorkerMasterPort
   admin.baseYarnWorkerDataPort = config.getint('Basic', 'base.yarn.worker.data.port')
+  admin.Globals.initBaseYarnWorkerDataPort = admin.baseYarnWorkerDataPort
   admin.baseYarnSchedulerPort = config.getint('Basic', 'base.yarn.scheduler.port')
+  admin.Globals.initBaseYarnSchedulerPort = admin.baseYarnSchedulerPort
   LAST_DATAPOINTS = config.getint('Basic', 'last.datapoints')
   admin.Globals.schedulerPort = config.getint('Basic', 'scheduler.port')
   admin.Globals.log = log

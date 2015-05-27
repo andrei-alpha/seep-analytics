@@ -259,6 +259,7 @@ def server_set_config():
 
 @app.route('/command/reset/allocations')
 def server_reset_allocations():
+  log.info("Reset allocations")
   scheduler.resetAllocations()
 
 def update_configs():

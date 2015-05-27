@@ -74,7 +74,6 @@ function updateGraph(id, title, data) {
     chart.series[0].setData(data[1]);
     chart.xAxis[0].setCategories(data[0]);
   } else if(data[1].length > chart.series[0].data.length) {
-    console.log(data[0][data[0].length-1], data[1][data[1].length-1]);
     chart.series[0].addPoint(data[1][data[1].length-1], data[0][data[0].length-1])    
   }
 }
