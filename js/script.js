@@ -79,16 +79,18 @@ function updateGraph(id, title, data) {
   }
 }
 
-function getDataset() {
+function getDataset(isRecurrent) {
   $.ajax({
     url: "/backend/dataset",
     type: "get",
     success: function(response){
       globalDataset = response;
       openView(currentView);
-      setTimeout(function() {
-        getDataset();
-      }, 10000);
+      if (isRecurrent) {
+        setTimeout(function() {
+          getDataset(true);
+        }, 10000);
+      }
     },
   });
 }
@@ -142,7 +144,7 @@ function updateGraphs(dataset, graphType) {
       var tableTemplate = $('#infoTableTemplate').html();
       var statsTemplateHtml = statsTemplate.format('stats-graph', tableTemplate);
       $('#graphs > tbody:last').append(statsTemplateHtml);
-      setTimeout(function() {getClusterInfo(); }, 100);
+      setTimeout(function() {getClusterInfo(false); }, 100);
     }
   }
 
@@ -157,7 +159,7 @@ function updateGraphs(dataset, graphType) {
       $('#graphs > tbody:last').append(resourcesTemplateHtml);
       resourcesTemplateHtml = resourcesTemplate.format('disk-bars-graph', 'disk-area-graph');
       $('#graphs > tbody:last').append(resourcesTemplateHtml);
-      getClusterInfo();
+      getClusterInfo(false);
     }
     return;
   }
@@ -262,8 +264,9 @@ function updateGraphs(dataset, graphType) {
 }
 
 $(function() {
-  getDataset();
+  getDataset(true);
   getAvailableOptions();
+  getClusterInfo(true);
 
   $('#startup-scheduler-type').change(function() {
     var name = 'startup.scheduling.type';

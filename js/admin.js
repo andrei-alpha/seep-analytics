@@ -330,7 +330,7 @@ function sudo(command, arg1, arg2) {
   });
 }
 
-function getClusterInfo() {
+function getClusterInfo(isRecurrent) {
   $.ajax({
     url: "/command/resource_report",
     type: "get",
@@ -338,14 +338,16 @@ function getClusterInfo() {
       if (response != 'pending') {
         if (currentView == 'cluster')
           updateAdminTable(response['overall']);
-        if (currentView == 'resources') {
+        else if (currentView == 'resources') {
           updateResourcesGraphs(response)
           updateOperatorsTable(response['hosts']);
         }
       }
-      setTimeout(function() {
-        getClusterInfo();
-      }, 4000);
+      if (isRecurrent) {
+        setTimeout(function() {
+          getClusterInfo(true);
+        }, 4000);
+      }
     }
   });
 }
