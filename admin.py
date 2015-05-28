@@ -282,15 +282,20 @@ def getClusterInfo(dataset, totalEventsToDate, hostsOnly=False):
     if hostsOnly:
         return cInfo
 
+    # Skip this node when measuring overall stats since apps are not running here
+    if len(cInfo['hosts']) > 3:
+        workerHosts = filter(lambda x: os.uname()[1] not in x, cInfo['hosts'].keys())
+    else:
+        workerHosts = [x for x in cInfo['hosts'].keys()]
     cInfo['overall'] = {
-        'total_mem': sum([cInfo['hosts'][host]['memory'][0] for host in cInfo['hosts']]),
-        'total_cpus': sum([len(cInfo['hosts'][host]['cpu']) for host in cInfo['hosts']]),
-        'cpu_usage': float(sum([cInfo['hosts'][host]['avg_cpu'] for host in cInfo['hosts']])) / len(cInfo['hosts']),
-        'mem_usage': float(sum([cInfo['hosts'][host]['memory'][1] for host in cInfo['hosts']])) / len(cInfo['hosts']),
-        'disk_io': [sum([cInfo['hosts'][host]['disk_io'][0] for host in cInfo['hosts']]), sum([cInfo['hosts'][host]['disk_io'][1] for host in cInfo['hosts']])],
-        'net_io': [sum([cInfo['hosts'][host]['net_io'][0] for host in cInfo['hosts']]), sum([cInfo['hosts'][host]['net_io'][1] for host in cInfo['hosts']])],
-        'kafka_logs': sum([cInfo['hosts'][host]['logs'][0] for host in cInfo['hosts']]) * 1024,
-        'hadoop_logs': sum([cInfo['hosts'][host]['logs'][1] for host in cInfo['hosts']]) * 1024,
+        'total_mem': sum([cInfo['hosts'][host]['memory'][0] for host in workerHosts]),
+        'total_cpus': sum([len(cInfo['hosts'][host]['cpu']) for host in workerHosts]),
+        'cpu_usage': float(sum([cInfo['hosts'][host]['avg_cpu'] for host in workerHosts])) / len(workerHosts),
+        'mem_usage': float(sum([cInfo['hosts'][host]['memory'][1] for host in workerHosts])) / len(workerHosts),
+        'disk_io': [sum([cInfo['hosts'][host]['disk_io'][0] for host in workerHosts]), sum([cInfo['hosts'][host]['disk_io'][1] for host in workerHosts])],
+        'net_io': [sum([cInfo['hosts'][host]['net_io'][0] for host in workerHosts]), sum([cInfo['hosts'][host]['net_io'][1] for host in workerHosts])],
+        'kafka_logs': sum([cInfo['hosts'][host]['logs'][0] for host in workerHosts]) * 1024,
+        'hadoop_logs': sum([cInfo['hosts'][host]['logs'][1] for host in workerHosts]) * 1024,
         'total_events': totalEventsToDate,
         'apps_running': Globals.yarnClusterMetrics.get('appsRunning', None),
         'containers_running': Globals.yarnClusterMetrics.get('containersAllocated', None),

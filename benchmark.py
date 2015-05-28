@@ -31,7 +31,7 @@ commands = [{
 }]
 """
 
-def getDataSetMetric(lst, metric, ts):
+def getDataSetMetric(lst, metric, ts, takeLast=False):
   if not 'value' in metric:
     log.warn('Dataset value missing! Dataset have multple metrics.')
     return
@@ -45,7 +45,7 @@ def getDataSetMetric(lst, metric, ts):
       return
 
   # Skip the last two datapoints because they might have missing value
-  for x in xrange(len(data['data'])-2):
+  for x in xrange(len(data['data']) - (2 if not takeLast else 0) ):
     item = data['data'][x]
     # Server time is seconds timestamp / 30
     if item['time'] * 30 > ts and metric['value'] in item:
@@ -120,13 +120,19 @@ def runBenchmark(commands):
 
     log.info(' ------------- Run Benchmark:', command['time'], 'sec -------------------')
     while time.time() - timestamp < command['time']:
+      time.sleep(10)
       for x in xrange(len(metrics)):
         metric = metrics[x]
         if metric['type'] == 'dataset':
           getDataSetMetric(results[x], metric, lastDataPoint)
         else:
           getResourceMetric(results[x], metric, lastDataPoint)
-      time.sleep(10)
+
+    # Take into account also last datapoints for max
+    for x in xrange(len(metrics)):
+      metric = metrics[x]
+      if metric['type'] == 'dataset' and metric['metric'] == 'max':
+        getDataSetMetric(results[x], metric, lastDataPoint, True)
 
     for x in xrange(len(metrics)):
       metric = metrics[x]
