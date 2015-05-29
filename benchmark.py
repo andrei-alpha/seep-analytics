@@ -5,6 +5,7 @@ import json
 import logger
 import time
 import requests
+import logging
 import configparser
 
 """
@@ -41,7 +42,7 @@ def getDataSetMetric(lst, metric, ts, takeLast=False):
   for item in metric['path']:
     data = data.get(item)
     if not data:
-      log.warn("Failed to parse metric for path", metric[path])
+      log.warn("Failed to parse metric for path", metric['path'])
       return
 
   # Skip the last two datapoints because they might have missing value
@@ -98,7 +99,7 @@ def sendCommand(run, count=0):
       if count == 5:
         log.warn("Failed to stop all seep queries. Aborting benchmark.")
         sys.exit(0)
-      log.warn("Didn't manage for now to stop seep queries. Try again in 2 seconds...")
+      log.debug("Didn't manage for now to stop seep queries. Try again in 2 seconds...")
       time.sleep(2)
       sendCommand(run, count+1)
       return
@@ -148,7 +149,7 @@ def runBenchmark(commands):
         val = max(results[x])
       elif metric['metric'] == 'min':
         val = min(results[x])
-      log.info(metricName + ':', val)
+      log.debug(metricName + ':', val)
 
       if not metricName in benchmarkResults:
         benchmarkResults[metricName] = []
@@ -163,7 +164,7 @@ def runBenchmark(commands):
 
 def initConfigs(configs):
   for config in configs:
-    log.debug("Set config", config['name'], config['value'])
+    log.info("Set config", config['name'], config['value'])
     requests.post(server_host + '/command/set_config', data=config)
 
 if __name__ == "__main__":
@@ -172,7 +173,7 @@ if __name__ == "__main__":
   server_host = 'http://' + config.get('Basic', 'server.host') + ':' + config.get('Basic', 'server.port')
   yarn_host = 'http://' + config.get('Basic', 'yarn.host') + ':8088'
   
-  log = logger.Logger('Benchmark')
+  log = logger.Logger('Benchmark', logging.INFO)
   usage = "We want as arguments:\n 1) test data file (required)\n 2) number of repetitions (required)\n"
   if len(sys.argv) < 2:
     log.warn(usage)
