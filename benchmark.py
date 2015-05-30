@@ -37,7 +37,12 @@ def getDataSetMetric(lst, metric, ts, takeLast=False):
     log.warn('Dataset value missing! Dataset have multple metrics.')
     return
 
-  res = requests.get(server_host + '/backend/dataset')
+  try:
+    res = requests.get(server_host + '/backend/dataset')
+  except requests.ConnectionError:
+    log.warn("Failed to connect to server to get metrics")
+    return
+
   data = json.loads(res.text)
   for item in metric['path']:
     data = data.get(item)
@@ -54,7 +59,12 @@ def getDataSetMetric(lst, metric, ts, takeLast=False):
       ts = item['time']
 
 def getResourceMetric(lst, metric, ts):
-  res = requests.get(server_host + '/command/resource_report')
+  try:
+    res = requests.get(server_host + '/command/resource_report')
+  except requests.ConnectionError:
+    log.warn("Failed to connect to server to get resources")
+    return
+
   data = json.loads(res.text)
   for item in metric['path']:
     data = data.get(item)
@@ -110,6 +120,11 @@ def sendCommand(run, count=0):
 def runBenchmark(commands):
   benchmarkResults = {}
   benchmarkStartTimestamp = time.time()
+
+  totalTime = sum(c['time'] for c in commands)
+  printTotalTime = (str(totalTime) + ' seconds' if totalTime < 60 else str(int(totalTime / 60)) + ' minutes')
+  log.info(' ------------- Run Benchmark:', printTotalTime, '-------------------')
+
   for command in commands:
     if not sendCommand(command['run']):
       continue
@@ -119,7 +134,6 @@ def runBenchmark(commands):
     lastDataPoint = time.time()
     results = [[] for x in xrange(len(metrics))]
 
-    log.info(' ------------- Run Benchmark:', command['time'], 'sec -------------------')
     while time.time() - timestamp < command['time']:
       time.sleep(10)
       for x in xrange(len(metrics)):
@@ -158,14 +172,24 @@ def runBenchmark(commands):
     if 'finally' in command:
       sendCommand(command['finally'])
 
-  log.info(" -------------- Benchmark finished ---------------------- ")
+  log.info(" -------------- Benchmark finished -------------------------- ")
   log.debug(" Run time:", int(time.time() - benchmarkStartTimestamp), 'seconds')
   log.info(" Results:", benchmarkResults)
 
-def initConfigs(configs):
+def initConfigs(configs, count = 0):
   for config in configs:
-    log.info("Set config", config['name'], config['value'])
-    requests.post(server_host + '/command/set_config', data=config)
+    try:
+      requests.post(server_host + '/command/set_config', data=config)
+    except requests.ConnectionError:
+      if count > 10:
+        log.warn('Failed to set configs at the 10th try. Aborting benchmark.')
+        sys.exit(0)
+      log.warn('Failed to set configs for now. Try again in 10 seconds...')
+      time.sleep(10)
+      initConfigs(configs, count + 1)
+      return
+  printConfigs = ' '.join(map(lambda x: str(x['name']) + '=' + str(x['value']), configs))
+  log.info("Configs for this run:", printConfigs)
 
 if __name__ == "__main__":
   config = configparser.SafeConfigParser()
