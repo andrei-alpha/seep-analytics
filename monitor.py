@@ -98,6 +98,8 @@ class ResourceThread:
     self.host = host
     self.seep_root = seep_root
     self.procs = set()
+    self.procs_io = {}
+    self.procs_net_io = {}
 
   def args(self):
     return (self.host, self.seep_root)
@@ -107,6 +109,36 @@ class ResourceThread:
     if len(args):
       return args[0].split(' ')
     return ''
+
+  def getDiskIo(self, proc):
+    io_counters = [0, 0]
+    try: 
+      if hasattr(proc, 'get_io_counters'):
+        data = proc.get_io_counters()
+        io_counters = [data.read_bytes, data.write_bytes]
+      if not proc.pid in self.procs_io:
+        self.procs_io = io_counters
+      else:
+        io_counters = [io_counters[0] - self.procs_io[proc.pid][0], io_counters[1] - self.procs_io[proc.pid][1]]
+        self.procs_io[proc.pid] = io_counters 
+    except psutil.NoSuchProcess:
+      pass
+    return io_counters
+
+  def getNetIo(self, proc):
+    net_io = [0, 0]
+    try: 
+      if hasattr(proc, 'get_net_io'):
+        data = proc.get_net_io()
+        net_io = [data.sent_bytes, data.recv_bytes]
+      if not proc.pid in self.procs_net_io:
+        self.procs_net_io = net_io
+      else:
+        net_io = [net_io[0] - self.procs_net_io[proc.pid][0], net_io[1] - self.procs_net_io[proc.pid][1]]
+        self.procs_net_io[proc.pid] = net_io 
+    except psutil.NoSuchProcess:
+      pass
+    return net_io
 
   def scanWorkers(self):
     workers = []
@@ -143,6 +175,8 @@ class ResourceThread:
         procsToRemove.append(proc)
       else:
         cmdline = self.getJVMArgs(jvmOutput, pinfo['pid'])
+        pinfo['disk_io'] = self.getDiskIo(proc)
+        pinfo['net_io'] = self.getNetIo(proc)
         pinfo['name'] = 'Seep-Worker'
         for i in xrange(len(cmdline)):
           if cmdline[i] == '--data.port':
