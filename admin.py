@@ -237,6 +237,7 @@ def submitQuery(queryName, deploymentSize):
             out = unblockingRead(process)
             steps += len(re.findall('SeepYarnAppSubmissionClient', out))
             updateProgress(float(steps) / float(totalSteps) * 100.0)
+        time.sleep(0.5)
         baseYarnWorkerMasterPort += 5
         baseYarnWorkerDataPort += 5
         baseYarnSchedulerPort += 1
@@ -297,11 +298,13 @@ def getClusterInfo(dataset, totalEventsToDate, hostsOnly=False):
         'kafka_logs': sum([cInfo['hosts'][host]['logs'][0] for host in workerHosts]) * 1024,
         'hadoop_logs': sum([cInfo['hosts'][host]['logs'][1] for host in workerHosts]) * 1024,
         'total_events': totalEventsToDate,
-        'apps_running': Globals.yarnClusterMetrics.get('appsRunning', None),
-        'containers_running': Globals.yarnClusterMetrics.get('containersAllocated', None),
+        'apps_running': Globals.yarnClusterMetrics.get('appsRunning', 0),
+        'containers_running': Globals.yarnClusterMetrics.get('containersAllocated', 0),
     }
     if 'data' in dataset and len(dataset['data']) > 1:
         cInfo['overall']['current_rate'] = dataset['data'][-2]['1-minute rate']
+    else:
+        cInfo['overall']['current_rate'] = 0
     return cInfo
 
 # TODO: remove this function after debuging is complete

@@ -47,7 +47,7 @@ def getDataSetMetric(lst, metric, ts, takeLast=False):
   for item in metric['path']:
     data = data.get(item)
     if not data:
-      log.warn("Failed to parse metric for path", metric['path'])
+      log.debug("Failed to parse metric for path", metric['path'])
       return
 
   # Skip the last two datapoints because they might have missing value
@@ -69,7 +69,7 @@ def getResourceMetric(lst, metric, ts):
   for item in metric['path']:
     data = data.get(item)
     if not data:
-      log.warn("Failed to parse metric for path", metric[path])
+      log.debug("Failed to parse metric for path", metric[path])
       return
   lst.append(data)
 
