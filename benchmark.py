@@ -117,6 +117,30 @@ def sendCommand(run, count=0):
   log.debug('Command "' + str(current) + '" took', int(time.time() - timestamp), 'seconds')
   return True
 
+def smartAvg(lst, div):
+  if isinstance(lst[0], int):
+    return sum(lst) / div
+  elif isinstance(lst[0], list):
+    return map(lambda x: sum(x) / div, zip(*lst))
+  else:
+    log.warn("Cannot aggregate data type", type(lst))
+
+def smartMax(lst):
+  if isinstance(lst[0], int):
+    return max(lst)
+  elif isinstance(lst[0], list):
+    return map(lambda x: max(x), zip(*lst))
+  else:
+    log.warn("Cannot aggregate data type", type(lst))
+
+def smartMin(lst):
+  if isinstance(lst[0], int):
+    return min(lst)
+  elif isinstance(lst[0], list):
+    return map(lambda x: min(x), zip(*lst))
+  else:
+    log.warn("Cannot aggregate data type", type(lst))
+
 def runBenchmark(commands):
   benchmarkResults = {}
   benchmarkStartTimestamp = time.time()
@@ -158,11 +182,11 @@ def runBenchmark(commands):
         continue
 
       if metric['metric'] == 'avg':
-        val = sum(results[x]) / len(results[x])
+        val = smartAvg(results[x], len(results[x]))
       elif metric['metric'] == 'max':
-        val = max(results[x])
+        val = smartMax(results[x])
       elif metric['metric'] == 'min':
-        val = min(results[x])
+        val = smartMin(results[x])
       log.debug(metricName + ':', val)
 
       if not metricName in benchmarkResults:
