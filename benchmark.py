@@ -118,28 +118,28 @@ def sendCommand(run, count=0):
   return True
 
 def smartAvg(lst, div):
-  if isinstance(lst[0], int):
+  if isinstance(lst[0], (int, long, float, complex)):
     return sum(lst) / div
   elif isinstance(lst[0], list):
     return map(lambda x: sum(x) / div, zip(*lst))
   else:
-    log.warn("Cannot aggregate data type", type(lst))
+    log.warn("Cannot aggregate data type", type(lst[0]))
 
 def smartMax(lst):
-  if isinstance(lst[0], int):
+  if isinstance(lst[0], (int, long, float, complex)) or ins:
     return max(lst)
   elif isinstance(lst[0], list):
     return map(lambda x: max(x), zip(*lst))
   else:
-    log.warn("Cannot aggregate data type", type(lst))
+    log.warn("Cannot aggregate data type", type(lst[0]))
 
 def smartMin(lst):
-  if isinstance(lst[0], int):
+  if isinstance(lst[0], (int, long, float, complex)):
     return min(lst)
   elif isinstance(lst[0], list):
     return map(lambda x: min(x), zip(*lst))
   else:
-    log.warn("Cannot aggregate data type", type(lst))
+    log.warn("Cannot aggregate data type", type(lst[0]))
 
 def runBenchmark(commands):
   benchmarkResults = {}

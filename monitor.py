@@ -112,32 +112,26 @@ class ResourceThread:
 
   def getDiskIo(self, proc, div):
     res = [0, 0]
-    try: 
-      if hasattr(proc, 'get_io_counters'):
-        data = proc.get_io_counters()
-        io = [data.read_bytes, data.write_bytes]
-        if not proc.pid in self.procs_io:
-          self.procs_io[proc.pid] = io
-        else:
-          res = [(io[0] - self.procs_io[proc.pid][0]) / div, (io[1] - self.procs_io[proc.pid][1]) / div]
-          self.procs_io[proc.pid] = io
-    except psutil.NoSuchProcess:
-      pass
+    if hasattr(proc, 'get_io_counters'):
+      data = proc.get_io_counters()
+      io = [data.read_bytes, data.write_bytes]
+      if not proc.pid in self.procs_io:
+        self.procs_io[proc.pid] = io
+      else:
+        res = [(io[0] - self.procs_io[proc.pid][0]) / div, (io[1] - self.procs_io[proc.pid][1]) / div]
+        self.procs_io[proc.pid] = io
     return res
 
   def getNetIo(self, proc, div):
     res = [0, 0]
-    try: 
-      if hasattr(proc, 'get_net_io'):
-        data = proc.get_net_io()
-        net_io = [data.sent_bytes, data.recv_bytes]
-        if not proc.pid in self.procs_net_io:
-          self.procs_net_io[proc.pid] = net_io
-        else:
-          net_io = [(net_io[0] - self.procs_net_io[proc.pid][0]) / div, (net_io[1] - self.procs_net_io[proc.pid][1]) / div]
-          self.procs_net_io[proc.pid] = net_io 
-    except psutil.NoSuchProcess:
-      pass
+    if hasattr(proc, 'get_net_io'):
+      data = proc.get_net_io()
+      net_io = [data.sent_bytes, data.recv_bytes]
+      if not proc.pid in self.procs_net_io:
+        self.procs_net_io[proc.pid] = net_io
+      else:
+        net_io = [(net_io[0] - self.procs_net_io[proc.pid][0]) / div, (net_io[1] - self.procs_net_io[proc.pid][1]) / div]
+        self.procs_net_io[proc.pid] = net_io 
     return res
 
   def scanWorkers(self):
@@ -148,14 +142,14 @@ class ResourceThread:
       try:
         if proc.name() == 'java' and not proc in self.procs:
           pids.append(proc.pid)
-      except psutil.NoSuchProcess:
+      except (psutil.NoSuchProcess, psutil.AccessDenied):
         pass
 
     for pid in pids:
       proc = psutil.Process(pid)
       try:
         pinfo = proc.as_dict(attrs=['cmdline'])
-      except psutil.NoSuchProcess:
+      except (psutil.NoSuchProcess, psutil.AccessDenied):
         pass
       else:
         cmdline = pinfo['cmdline']
@@ -172,9 +166,6 @@ class ResourceThread:
     for proc in self.procs:
       try:
         pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent'])
-      except psutil.NoSuchProcess:
-        procsToRemove.append(proc)
-      else:
         cmdline = self.getJVMArgs(jvmOutput, pinfo['pid'])
         scanInterval = config.getint('monitor.resources.scan.interval')
         pinfo['disk_io'] = self.getDiskIo(proc, scanInterval)
@@ -188,6 +179,8 @@ class ResourceThread:
           elif cmdline[i] == '--master.scheduler.port':
             pinfo['master.scheduler.port'] = cmdline[i+1]
         workers.append(pinfo)
+      except (psutil.NoSuchProcess, psutil.AccessDenied):
+        procsToRemove.append(proc)
 
     for proc in procsToRemove:
       self.procs.remove(proc)
