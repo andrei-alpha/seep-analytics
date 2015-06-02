@@ -171,14 +171,21 @@ class ResourceThread:
         pinfo['disk_io'] = self.getDiskIo(proc, scanInterval)
         pinfo['net_io'] = self.getNetIo(proc, scanInterval)
         pinfo['name'] = 'Seep-Worker'
+        check = 0
         for i in xrange(len(cmdline)):
           if cmdline[i] == '--data.port':
             pinfo['data.port'] = cmdline[i+1]
+            check += 1
           elif cmdline[i] == '--master.ip':
             pinfo['master.ip'] = cmdline[i+1]
+            check += 1
           elif cmdline[i] == '--master.scheduler.port':
             pinfo['master.scheduler.port'] = cmdline[i+1]
-        workers.append(pinfo)
+            check += 1
+        # We want to report only seep processes that have all those arguments 
+        # which are taken for granted in other places
+        if check == 3:
+          workers.append(pinfo)
       except (psutil.NoSuchProcess, psutil.AccessDenied):
         procsToRemove.append(proc)
 
