@@ -110,37 +110,38 @@ class ResourceThread:
       return args[0].split(' ')
     return ''
 
-  def getDiskIo(self, proc):
-    io_counters = [0, 0]
+  def getDiskIo(self, proc, div):
+    res = [0, 0]
     try: 
       if hasattr(proc, 'get_io_counters'):
         data = proc.get_io_counters()
-        io_counters = [data.read_bytes, data.write_bytes]
-      if not proc.pid in self.procs_io:
-        self.procs_io = io_counters
-      else:
-        io_counters = [io_counters[0] - self.procs_io[proc.pid][0], io_counters[1] - self.procs_io[proc.pid][1]]
-        self.procs_io[proc.pid] = io_counters 
+        io = [data.read_bytes, data.write_bytes]
+        if not proc.pid in self.procs_io:
+          self.procs_io[proc.pid] = io
+        else:
+          res = [(io[0] - self.procs_io[proc.pid][0]) / div, (io[1] - self.procs_io[proc.pid][1]) / div]
+          self.procs_io[proc.pid] = io
     except psutil.NoSuchProcess:
       pass
-    return io_counters
+    return res
 
-  def getNetIo(self, proc):
-    net_io = [0, 0]
+  def getNetIo(self, proc, div):
+    res = [0, 0]
     try: 
       if hasattr(proc, 'get_net_io'):
         data = proc.get_net_io()
         net_io = [data.sent_bytes, data.recv_bytes]
-      if not proc.pid in self.procs_net_io:
-        self.procs_net_io = net_io
-      else:
-        net_io = [net_io[0] - self.procs_net_io[proc.pid][0], net_io[1] - self.procs_net_io[proc.pid][1]]
-        self.procs_net_io[proc.pid] = net_io 
+        if not proc.pid in self.procs_net_io:
+          self.procs_net_io[proc.pid] = net_io
+        else:
+          net_io = [(net_io[0] - self.procs_net_io[proc.pid][0]) / div, (net_io[1] - self.procs_net_io[proc.pid][1]) / div]
+          self.procs_net_io[proc.pid] = net_io 
     except psutil.NoSuchProcess:
       pass
-    return net_io
+    return res
 
   def scanWorkers(self):
+    scanInterval = config.getint('monitor.resources.scan.interval')
     workers = []
     pids = []
     for proc in psutil.process_iter():
@@ -175,8 +176,9 @@ class ResourceThread:
         procsToRemove.append(proc)
       else:
         cmdline = self.getJVMArgs(jvmOutput, pinfo['pid'])
-        pinfo['disk_io'] = self.getDiskIo(proc)
-        pinfo['net_io'] = self.getNetIo(proc)
+        scanInterval = config.getint('monitor.resources.scan.interval')
+        pinfo['disk_io'] = self.getDiskIo(proc, scanInterval)
+        pinfo['net_io'] = self.getNetIo(proc, scanInterval)
         pinfo['name'] = 'Seep-Worker'
         for i in xrange(len(cmdline)):
           if cmdline[i] == '--data.port':
@@ -201,6 +203,7 @@ class ResourceThread:
       return None
 
   def scan(self):
+    scanInterval = config.getint('monitor.resources.scan.interval')
     mem = psutil.phymem_usage()
     self.info['memory'] = [mem.total, mem.percent]
     self.info['cpu'] = psutil.cpu_percent(interval=0, percpu=True)
@@ -210,7 +213,7 @@ class ResourceThread:
     if not hasattr(self, 'read_bytes') or not hasattr(self, 'write_bytes'):
       self.info['disk_io'] = [0, 0]
     else:
-      self.info['disk_io'] = [(io.read_bytes - self.read_bytes) / 5, (io.write_bytes - self.write_bytes) / 5]
+      self.info['disk_io'] = [(io.read_bytes - self.read_bytes) / scanInterval, (io.write_bytes - self.write_bytes) / scanInterval]
     self.write_bytes = io.write_bytes
     self.read_bytes = io.read_bytes
 
@@ -219,7 +222,7 @@ class ResourceThread:
     if not hasattr(self, 'bytes_sent') or not hasattr(self, 'bytes_recv'):
       self.info['net_io'] = [0, 0]
     else:
-      self.info['net_io'] = [(net.bytes_sent - self.bytes_sent) / 5, (net.bytes_recv - self.bytes_recv) / 5]
+      self.info['net_io'] = [(net.bytes_sent - self.bytes_sent) / scanInterval, (net.bytes_recv - self.bytes_recv) / scanInterval]
     self.bytes_sent = net.bytes_sent
     self.bytes_recv = net.bytes_recv
 

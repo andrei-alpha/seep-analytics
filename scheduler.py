@@ -159,11 +159,13 @@ class Scheduler(object):
   def computeIoScore(self, host):
     host['disk_io'][0] = host['disk_io'][0] + dispatcher.getEstimation(host['host'], 'io_read')
     host['disk_io'][1] = host['disk_io'][1] + dispatcher.getEstimation(host['host'], 'io_write')
-    host['io_percent'] = int(sum(host['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + sum(host['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2
-    host['potential'] = self.estimatePotential(host['io_percent'])
+    host['io_percent'] = int(100 * sum(host['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + 100 * sum(host['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2
+    host['io_potential'] = self.estimatePotential(host['io_percent'])
     for worker in host['workers']:
-      worker['io_percent'] = int(sum(worker['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + sum(worker['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2
-    host['io_score'] = sum(float(x['io_percent'] + host['potential']) for x in host['workers'])
+      worker['io_percent'] = int(100 * sum(worker['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + 100 * sum(worker['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2
+    host['io_score'] = sum(float(x['io_percent'] + host['io_potential']) for x in host['workers'])
+    nonSeepIo = host['io_percent'] - sum(float(x['io_percent']) for x in host['workers'])
+    host['io_score'] += (0 if nonSeepIo < 10 else host['potential']) + nonSeepIo
 
   def selectCpuIntensiveWorkers(self, hosts, workers):
     hasSelected = False
@@ -192,12 +194,12 @@ class Scheduler(object):
     hasSelected = False
     resourceReport = '---------------- IO Resource Report --------------------\n'
     for host in hosts:
-      resourceReport += '%s disk_io: %s net_io %s io_score: %d op: %s\n' % (host['host'], str(host['disk_io']), str(host['net_io']), host['io_score'], str(map(lambda x: {x['data.port']: x['io_percent']}, host['workers'])))
+      resourceReport += '%s disk_io: %s net_io %s io_percent: %d io_score: %d op: %s\n' % (host['host'], str(host['disk_io']), str(host['net_io']), host['io_percent'], host['io_score'], str(map(lambda x: {x['data.port']: x['io_percent']}, host['workers'])))
 
       # cpu score represent actual plus extra estimation utilization
       if not len(host['workers']) or host['io_score'] < config.getint('Scheduler', 'migration.from.score'):
         continue
-      worker = max(host['workers'], key=lambda x: sum(x['io_percent']))
+      worker = max(host['workers'], key=lambda x: x['io_percent'])
       worker['io_score'] = worker['io_percent'] + host['io_potential']
       if worker['io_score'] < 50:
         continue
@@ -229,6 +231,8 @@ class Scheduler(object):
     newWorkers = [x for x in host['workers']]
     newWorkers.append(worker)
     newIoScoreDest = sum(float(x['io_percent'] + newPotential) for x in newWorkers)
+    nonSeepIo = host['io_percent'] - sum(float(x['io_percent']) for x in host['workers'])
+    newIoScoreDest += (0 if nonSeepIo < 10 else newPotential) + nonSeepIo
 
     log.debug('IO selection', worker['data.port'] + ':' + str(worker['io_percent']), worker['io_score'], worker['source'], '>', host['host'])
     log.info('src.io.score:', worker['source_io_score'], 'dest.io.score:', newIoScoreDest, 'new.potential:', newPotential, 'op:', [x['data.port'] for x in newWorkers])
