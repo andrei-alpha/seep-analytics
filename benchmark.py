@@ -39,11 +39,11 @@ def getDataSetMetric(lst, metric, ts, takeLast=False):
 
   try:
     res = requests.get(server_host + '/backend/dataset')
-  except requests.ConnectionError:
+    data = json.loads(res.text)
+  except (requests.ConnectionError, ValueError):
     log.warn("Failed to connect to server to get metrics")
     return
 
-  data = json.loads(res.text)
   for item in metric['path']:
     data = data.get(item)
     if not data:
@@ -61,11 +61,11 @@ def getDataSetMetric(lst, metric, ts, takeLast=False):
 def getResourceMetric(lst, metric, ts):
   try:
     res = requests.get(server_host + '/command/resource_report')
-  except requests.ConnectionError:
+    data = json.loads(res.text)
+  except (requests.ConnectionError, ValueError):
     log.warn("Failed to connect to server to get resources")
     return
 
-  data = json.loads(res.text)
   for item in metric['path']:
     data = data.get(item)
     if not data:
