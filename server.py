@@ -454,6 +454,10 @@ def logs(url):
     return format_links(urls[url])
   return "No logs data found"
 
+@app.route('/ping')
+def server_ping():
+  return 'ok'
+
 #@app.route('/stop')
 #def server_stop():
 #  sys.stderr.close()

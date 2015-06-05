@@ -338,6 +338,10 @@ def server_reset_allocations():
   log.info("Reset allocations")
   scheduler.resetAllocations()
 
+@app.route('/ping')
+def server_ping():
+  return 'ok'
+
 def update_configs():
   try:
     res = requests.get('http://' + gethostname() + ':' + str(config.getint('Basic', 'server.port')) + '/command/get_config')
