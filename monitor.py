@@ -200,7 +200,7 @@ class ResourceThread:
       return data['clusterMetrics']
     except requests.ConnectionError:
       log.warn("Failed to get cluster metrics.")
-      return None
+      return {}
 
   def scan(self):
     scanInterval = config.getint('monitor.resources.scan.interval')
