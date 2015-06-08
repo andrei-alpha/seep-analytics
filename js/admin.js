@@ -95,9 +95,8 @@ function updateResourcesGraphs(data) {
 
   var keys = new Array();
   for (var k in data['hosts']) {
-    if (k['host'] == 'wombat07')
+    if (k == 'wombat07')
       continue
-
     keys.push(k);
   }
   keys = keys.sort();

@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import time
+import math
 import socket
 import logger
 import requests
@@ -36,10 +37,8 @@ class RequestDispatcher(object):
       self.estimate[dest] = {}
     self.estimate[src]['cpu'] = self.estimate[src].get('cpu', 0) - cpu
     self.estimate[dest]['cpu'] = self.estimate[dest].get('cpu', 0) + cpu
-    self.estimate[src]['io_read'] = self.estimate[src].get('io_read', 0) - io[0]
-    self.estimate[dest]['io_read'] = self.estimate[dest].get('io_read', 0) + io[0]
-    self.estimate[src]['io_write'] = self.estimate[src].get('io_write', 0) - io[1]
-    self.estimate[dest]['io_write'] = self.estimate[dest].get('io_write', 0) + io[1]
+    self.estimate[src]['io'] = self.estimate[src].get('io', 0) - io
+    self.estimate[dest]['io'] = self.estimate[dest].get('io', 0) + io
 
   def getEstimation(self, host, resource):
     return (self.estimate[host][resource] if host in self.estimate else 0)
@@ -93,7 +92,7 @@ class RequestDispatcher(object):
       # If we see the worker running on the destination host, remove the request
       if wid in widToHostMap and widToHostMap[wid] == dest:
         timeDelta = int(time.time() - request['time'])
-        self.setEstimation(request['source'], request['destination'], -request['cpu'], [-x for x in request['io']])
+        self.setEstimation(request['source'], request['destination'], -request['cpu'], -request['io'])
         log.info('Completed', self.printRequest(request), 'after', timeDelta, 'seconds')
         del self.pending[wid]
 
@@ -101,7 +100,7 @@ class RequestDispatcher(object):
       request = self.pending[wid]
       timeDelta = int(time.time() - request['time'])
       if timeDelta > 30:
-        self.setEstimation(request['source'], request['destination'], -request['cpu'], [-x for x in request['io']])
+        self.setEstimation(request['source'], request['destination'], -request['cpu'], -request['io'])
         log.warn('Failed', self.printRequest(request))
         del self.pending[wid]
 
@@ -146,26 +145,28 @@ class Scheduler(object):
     except requests.ConnectionError:
       log.warn("Failed to get resource report!")
 
-  def estimatePotential(self, avg_cpu):
-    return max(0, avg_cpu - 60)
+  def estimatePotential(self, percentage):
+    x = (1 + percentage / 100.0)
+    y = math.pow(math.e, 1.5 * x) / 10
+    return min(max(y, 1), 2)
 
   def computeCpuScore(self, host):
     host['avg_cpu'] = host['avg_cpu'] + dispatcher.getEstimation(host['host'], 'cpu') / len(host['cpu'])
     host['potential'] = self.estimatePotential(host['avg_cpu'])
     host['cpu_score'] = sum(float(x['cpu_percent'] + host['potential']) / len(host['cpu']) for x in host['workers'])
     nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
-    host['cpu_score'] += (0 if nonSeepCpu < 10 else host['potential']) + nonSeepCpu
+    host['cpu_score'] += int(0 if nonSeepCpu < 10 else host['potential'] * nonSeepCpu)
 
   def computeIoScore(self, host):
-    host['disk_io'][0] = host['disk_io'][0] + dispatcher.getEstimation(host['host'], 'io_read')
-    host['disk_io'][1] = host['disk_io'][1] + dispatcher.getEstimation(host['host'], 'io_write')
-    host['io_percent'] = int(100 * sum(host['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + 100 * sum(host['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2
+    totalIo = (sum(host['disk_io']) + sum(host['net_io'])) / 2.0
+    host['io_percent'] = max(100, int(100 * sum(host['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + 100 * sum(host['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2)
+    host['io_percent'] = host['io_percent'] + dispatcher.getEstimation(host['host'], 'io')
     host['io_potential'] = self.estimatePotential(host['io_percent'])
     for worker in host['workers']:
-      worker['io_percent'] = int(100 * sum(worker['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + 100 * sum(worker['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2
+      worker['io_percent'] = int((((sum(worker['disk_io']) + sum(worker['net_io'])) / 2.0) / totalIo) * 100.0)
     host['io_score'] = sum(float(x['io_percent'] + host['io_potential']) for x in host['workers'])
     nonSeepIo = host['io_percent'] - sum(float(x['io_percent']) for x in host['workers'])
-    host['io_score'] += (0 if nonSeepIo < 10 else host['potential']) + nonSeepIo
+    host['io_score'] += int(0 if nonSeepIo < 10 else host['potential'] * nonSeepIo)
 
   def selectCpuIntensiveWorkers(self, hosts, workers):
     hasSelected = False
@@ -177,7 +178,7 @@ class Scheduler(object):
       if not len(host['workers']) or host['cpu_score'] < config.getint('Scheduler', 'migration.from.score'):
         continue
       worker = max(host['workers'], key=lambda x: x['cpu_percent'])
-      worker['cpu_score'] = worker['cpu_percent'] + host['potential']
+      worker['cpu_score'] = int(worker['cpu_percent'] * host['potential'])
       if worker['cpu_score'] < 50:
         continue
 
@@ -200,7 +201,7 @@ class Scheduler(object):
       if not len(host['workers']) or host['io_score'] < config.getint('Scheduler', 'migration.from.score'):
         continue
       worker = max(host['workers'], key=lambda x: x['io_percent'])
-      worker['io_score'] = worker['io_percent'] + host['io_potential']
+      worker['io_score'] = int(worker['io_percent'] * host['io_potential'])
       if worker['io_score'] < 50:
         continue
 
@@ -217,9 +218,9 @@ class Scheduler(object):
     newPotential = self.estimatePotential(host['avg_cpu'] + worker['cpu_percent'] / len(host['cpu']))
     newWorkers = [x for x in host['workers']]
     newWorkers.append(worker)
-    newCpuScoreDest = sum(float(x['cpu_percent'] + newPotential) / len(host['cpu']) for x in newWorkers)
+    newCpuScoreDest = sum(float(x['cpu_percent'] * newPotential) / len(host['cpu']) for x in newWorkers)
     nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
-    newCpuScoreDest += (0 if nonSeepCpu < 10 else newPotential) + nonSeepCpu
+    newCpuScoreDest += int(0 if nonSeepCpu < 10 else newPotential * nonSeepCpu)
 
     log.debug('CPU selection', worker['data.port'] + ':' + str(worker['cpu_percent']), worker['cpu_score'], worker['source'], '>', host['host'])
     log.info('src.cpu.score:', worker['source_cpu_score'], 'dest.cpu.score:', newCpuScoreDest, 'new.potential:', newPotential, 'non.seep.cpu:', nonSeepCpu, 'op:', [x['data.port'] for x in newWorkers])
@@ -230,9 +231,9 @@ class Scheduler(object):
     newPotential = self.estimatePotential(host['io_percent'] + worker['io_percent'])
     newWorkers = [x for x in host['workers']]
     newWorkers.append(worker)
-    newIoScoreDest = sum(float(x['io_percent'] + newPotential) for x in newWorkers)
+    newIoScoreDest = sum(float(x['io_percent'] * newPotential) for x in newWorkers)
     nonSeepIo = host['io_percent'] - sum(float(x['io_percent']) for x in host['workers'])
-    newIoScoreDest += (0 if nonSeepIo < 10 else newPotential) + nonSeepIo
+    newIoScoreDest += int(0 if nonSeepIo < 10 else newPotential * nonSeepIo)
 
     log.debug('IO selection', worker['data.port'] + ':' + str(worker['io_percent']), worker['io_score'], worker['source'], '>', host['host'])
     log.info('src.io.score:', worker['source_io_score'], 'dest.io.score:', newIoScoreDest, 'new.potential:', newPotential, 'op:', [x['data.port'] for x in newWorkers])
@@ -241,7 +242,7 @@ class Scheduler(object):
   def migrationRequest(self, host, worker):
     return {'id': worker['data.port'],
       'master.ip': worker.get('master.ip', None), 
-      'cpu': worker['cpu_percent'], 'io': worker['disk_io'],
+      'cpu': worker['cpu_percent'], 'io': worker['io_percent'],
       'master.scheduler.port': worker.get('master.scheduler.port', None),
       'destination': host['host'], 'source': worker['source']}
 
