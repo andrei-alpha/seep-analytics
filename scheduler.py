@@ -147,7 +147,7 @@ class Scheduler(object):
 
   def estimatePotential(self, percentage):
     x = (1 + percentage / 100.0)
-    y = math.pow(math.e, 1.5 * x) / 10
+    y = math.pow(math.e, config.getfloat('Scheduler', 'potential.lambda') * x) / 10
     return min(max(y, 1), 2)
 
   def computeCpuScore(self, host):

@@ -55,6 +55,9 @@ body {
 #runtime-scheduler {
 	width: 200px;
 }
+input {
+	width: 200px;
+}
 
 .operator {
 	border-style: solid;

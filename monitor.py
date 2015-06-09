@@ -146,8 +146,8 @@ class ResourceThread:
         pass
 
     for pid in pids:
-      proc = psutil.Process(pid)
       try:
+        proc = psutil.Process(pid)
         pinfo = proc.as_dict(attrs=['cmdline'])
       except (psutil.NoSuchProcess, psutil.AccessDenied):
         pass

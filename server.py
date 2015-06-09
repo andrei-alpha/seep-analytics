@@ -409,8 +409,6 @@ def server_command(command):
 @app.route('/options')
 def server_options():
   options = admin.getAvailableOptions()
-  options['startup-scheduler-type'] = config.get('Scheduler', 'startup.scheduling.type')
-  options['runtime-scheduler'] = config.get('Scheduler', 'runtime.scheduling.enabled')
   return json.dumps(options)
 
 @app.route('/command/resource_report')

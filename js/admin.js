@@ -406,3 +406,32 @@ function getAvailableOptions() {
     }
   });
 }
+
+function getSchedulerConfigs() {
+  $.ajax({
+    dataType: "json",
+    url: "/command/get_config",
+    type: "get",
+    success: function(response) {
+      for (key in response['Scheduler']) {
+        var x = key.replace(/\./g, " "), prettyKey = "";
+        for (var i = 0; i < x.length; ++i) {
+          if (i == 0 || x[i - 1] == ' ') {
+            prettyKey += x[i].toUpperCase();
+          } else {
+            prettyKey += x[i]; 
+          }
+        }
+
+        if (key == 'runtime.scheduling.enabled') {
+          $('#runtime-scheduler').val(response['Scheduler'][key])
+        } else if (key == 'startup.scheduling.type') {
+          $('#startup-scheduler-type').val(response['Scheduler'][key])
+        } else {
+          $('#scheduler-options').append('<h5>' + prettyKey + '</h5>')
+          $('#scheduler-options').append('<input id="input-' + key + '" value="' + response['Scheduler'][key] + '"></input>')
+        }
+      }
+    }
+  });
+}

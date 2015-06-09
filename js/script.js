@@ -266,6 +266,7 @@ $(function() {
   getDataset(true);
   getAvailableOptions();
   getClusterInfo(true);
+  getSchedulerConfigs();
 
   $('#startup-scheduler-type').change(function() {
     var name = 'startup.scheduling.type';
