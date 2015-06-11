@@ -8,11 +8,11 @@ class StatsComputer(object):
   def __init__(self, host):
     self.working = True
     self.host = host
-    self.events = Queue.Queue()
+    self.events = Queue.PriorityQueue()
     self.before = {}
 
   def addEvent(self, name, wid, timeDelta=0):
-    self.events.put([name, wid, time.time() + timeDelta])   
+    self.events.put([time.time() + timeDelta, name, wid])   
 
   def stop(self):
     log.info('Stoping stats thread...')
@@ -77,6 +77,8 @@ class StatsComputer(object):
 
         # Wait for it
         if time.time() < event[2]:
-          time.sleep(max(0, event[2] - time.time() - event[2]))
-        self.query(event[0], event[1])
-      time.sleep(0.5)
+          self.events.put(event)
+          time.sleep(2)
+          continue
+        self.query(event[1], event[2])
+      time.sleep(2)

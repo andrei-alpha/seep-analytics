@@ -101,7 +101,7 @@ class RequestDispatcher(object):
         timeDelta = int(time.time() - request['time'])
         self.setEstimation(request['source'], request['destination'], -request['cpu'], -request['io'])
         log.info('Completed', self.printRequest(request), 'after', timeDelta, 'seconds')
-        stat.addEvent('after', request['id'], 120)
+        stat.addEvent('after', request['id'], 200)
         del self.pending[wid]
 
     for wid in self.pending.keys():
