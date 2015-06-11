@@ -428,8 +428,8 @@ function getSchedulerConfigs() {
         } else if (key == 'startup.scheduling.type') {
           $('#startup-scheduler-type').val(response['Scheduler'][key])
         } else {
-          $('#scheduler-options').append('<h5>' + prettyKey + '</h5>')
-          $('#scheduler-options').append('<input id="input-' + key + '" value="' + response['Scheduler'][key] + '"></input>')
+          html = '<li> <h5>' + prettyKey + '</h5>' + '<input id="input-' + key + '" value="' + response['Scheduler'][key] + '"></input> </li>'
+          $('#scheduler-options .input-grid').append(html)
         }
       }
     }

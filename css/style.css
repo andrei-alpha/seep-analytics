@@ -76,3 +76,9 @@ input {
 	transform: rotate(270deg);
 	transform-origin: 75px 110px 0;
 }
+
+.input-grid li {
+    display: block;
+    float: left;
+    width: 25%;
+}

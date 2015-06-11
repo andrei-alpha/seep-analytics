@@ -16,6 +16,9 @@ from bottle import Bottle, request
 
 app = Bottle()
 
+def externalIp(host):
+  return host + config.get('Basic', 'external.ip')
+
 class RequestDispatcher(object):
   def __init__(self):
     self.working = True
@@ -57,7 +60,7 @@ class RequestDispatcher(object):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
       s.connect((request['master.ip'], int(request['master.scheduler.port'])))
-      s.sendall('migrate,' + request['id'] + ',' + request['destination'] + ('.doc.res.ic.ac.uk' if 'wombat' in request['destination'] else ''))
+      s.sendall('migrate,' + request['id'] + ',' + externalIp(request['destination']))
       self.setEstimation(request['source'], request['destination'], request['cpu'], request['io'])
       log.info('Dispached', self.printRequest(request))
       request['time'] = time.time()
@@ -251,7 +254,7 @@ class Scheduler(object):
     hosts = []
     for host in self.report.values():
       # This is reserved for scheduler, zookeeper, analytics
-      if 'wombat07' in host['host']:
+      if host['host'] in config.get('Basic', 'zookeeper.host'):
         continue
       self.computeCpuScore(host)
       self.computeIoScore(host)
@@ -313,7 +316,7 @@ class Scheduler(object):
     # Assume we will allocate a container already
     self.allocations[node] = self.allocations.get(node, 0) + 1
     log.info('Allocate on node: ', preferredNodes[0])
-    return node + ('.doc.res.ic.ac.uk' if 'wombat' in node else '')
+    return externalIp(node)
 
 def computeBusyScore(data):
   return data['avg_cpu']
@@ -321,7 +324,7 @@ def computeBusyScore(data):
 @app.route('/scheduler/host')
 def scheduler_host():
   if config.getint('Scheduler', 'startup.scheduling.type') == 0:
-    return ('wombat01.doc.res.ic.ac.uk' if 'wombat' in os.uname()[1] else os.uname()[1])
+    return externalIp(os.uname()[1])
   elif config.getint('Scheduler', 'startup.scheduling.type') == 1:
     return None
   else:
