@@ -329,7 +329,7 @@ def computeBusyScore(data):
 @app.route('/scheduler/host')
 def scheduler_host():
   if config.getint('Scheduler', 'startup.scheduling.type') == 0:
-    return externalIp(os.uname()[1])
+    return externalIp('wombat01' if 'wombat' in os.uname()[1] else os.uname()[1] )
   elif config.getint('Scheduler', 'startup.scheduling.type') == 1:
     return None
   else:
@@ -365,7 +365,6 @@ def update_configs():
 if __name__ == "__main__":
   scheduler = Scheduler()
   dispatcher = RequestDispatcher()
-  stat = stats.StatsComputer(gethostname() + ':' + str(config.getint('Basic', 'server.port')))
   log = logger.Logger('Scheduler')
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
@@ -376,11 +375,12 @@ if __name__ == "__main__":
   t = threading.Thread(target=dispatcher.run)
   t.deamon = True
   t.start()
-  t = threading.Thread(target=stats.run)
+  stat = stats.StatsComputer(gethostname() + ':' + str(config.getint('Basic', 'server.port')))
+  t = threading.Thread(target=stat.run)
   t.deamon = True
   t.start()
 
 app.run(host=gethostname(), port=config.getint('Basic', 'scheduler.port'), reloader=False, quiet=True)
 scheduler.stop()
 dispatcher.stop()
-stats.stop()
+stat.stop()
