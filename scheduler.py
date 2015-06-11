@@ -9,6 +9,9 @@ import requests
 import threading
 import configparser
 
+# TODO: remove after benchmarks
+import stats
+
 import Queue
 
 from socket import gethostname
@@ -66,6 +69,7 @@ class RequestDispatcher(object):
       request['time'] = time.time()
       self.lastSentPerHost[request['master.scheduler.port']] = request['time']
       self.pending[request['id']] = request
+      stat.addEvent('before', request['id'])
     except:
       log.warn('Request', request, 'failed!')
       log.error(sys.exc_info())
@@ -97,6 +101,7 @@ class RequestDispatcher(object):
         timeDelta = int(time.time() - request['time'])
         self.setEstimation(request['source'], request['destination'], -request['cpu'], -request['io'])
         log.info('Completed', self.printRequest(request), 'after', timeDelta, 'seconds')
+        stat.addEvent('after', request['id'], 120)
         del self.pending[wid]
 
     for wid in self.pending.keys():
@@ -360,6 +365,7 @@ def update_configs():
 if __name__ == "__main__":
   scheduler = Scheduler()
   dispatcher = RequestDispatcher()
+  stat = stats.StatsComputer(gethostname() + ':' + str(config.getint('Basic', 'server.port')))
   log = logger.Logger('Scheduler')
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')
@@ -370,7 +376,11 @@ if __name__ == "__main__":
   t = threading.Thread(target=dispatcher.run)
   t.deamon = True
   t.start()
+  t = threading.Thread(target=stats.run)
+  t.deamon = True
+  t.start()
 
 app.run(host=gethostname(), port=config.getint('Basic', 'scheduler.port'), reloader=False, quiet=True)
 scheduler.stop()
 dispatcher.stop()
+stats.stop()
