@@ -301,7 +301,7 @@ def getClusterInfo(dataset, totalEventsToDate, hostsOnly=False):
         'apps_running': Globals.yarnClusterMetrics.get('appsRunning', 0),
         'containers_running': Globals.yarnClusterMetrics.get('containersAllocated', 0),
     }
-    if 'data' in dataset and len(dataset['data']) > 1:
+    if dataset and 'data' in dataset and len(dataset['data']) > 1:
         cInfo['overall']['current_rate'] = dataset['data'][-2]['1-minute rate']
     else:
         cInfo['overall']['current_rate'] = 0

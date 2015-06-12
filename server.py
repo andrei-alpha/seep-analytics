@@ -414,7 +414,7 @@ def server_options():
 @app.route('/command/resource_report')
 def server_get_info():
   response.content_type = 'application/json'
-  return admin.getClusterInfo(dataset['cluster'], totalEventsToDate)
+  return admin.getClusterInfo(dataset['cluster'].get(GENERAL), totalEventsToDate)
 
 @app.route('/command/scheduler_report')
 def server_scheduler_report():
@@ -427,9 +427,14 @@ def server_set_config():
   name = request.forms.get('name')
   value = request.forms.get('value')
   if section == 'Scheduler':
-    schedulerHost = 'http://' + os.uname()[1] + ':' + str(config.getint('Basic', 'scheduler.port'))
-    admin.sendRequest(schedulerHost, '/command/set_config', {'name': name, 'value': value}, 'post')
     config.set(section, name, value)
+    t = threading.Thread(target=updateSchedulerConfig, args=(name, value))
+    t.deamon = True
+    t.start()
+
+def updateSchedulerConfig(name, value):
+  schedulerHost = 'http://' + os.uname()[1] + ':' + str(config.getint('Basic', 'scheduler.port'))
+  admin.sendRequest(schedulerHost, '/command/set_config', {'name': name, 'value': value}, 'post')
 
 @app.route('/command/get_config')
 def server_get_config():

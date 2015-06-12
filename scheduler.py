@@ -33,7 +33,7 @@ class RequestDispatcher(object):
     self.lastReceivedPerId = {}
 
   def stop(self):
-    print 'Stoping request distpatcher thread...'
+    log.info('Stoping request distpatcher thread...')
     self.working = False
 
   def setEstimation(self, src, dest, cpu, io):
@@ -63,13 +63,14 @@ class RequestDispatcher(object):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
       s.connect((request['master.ip'], int(request['master.scheduler.port'])))
+      stat.addEvent('before', request['id'])
+
       s.sendall('migrate,' + request['id'] + ',' + externalIp(request['destination']))
       self.setEstimation(request['source'], request['destination'], request['cpu'], request['io'])
       log.info('Dispached', self.printRequest(request))
       request['time'] = time.time()
       self.lastSentPerHost[request['master.scheduler.port']] = request['time']
       self.pending[request['id']] = request
-      stat.addEvent('before', request['id'])
     except:
       log.warn('Request', request, 'failed!')
       log.error(sys.exc_info())
@@ -155,24 +156,24 @@ class Scheduler(object):
 
   def estimatePotential(self, percentage):
     x = (1 + percentage / 100.0)
-    y = math.pow(math.e, config.getfloat('Scheduler', 'potential.lambda') * x) / 10
-    return min(max(y, 1), 2)
+    y =  min(2, math.pow(math.e, config.getfloat('Scheduler', 'potential.lambda') * x) / 10)
+    return min(max(y * 0.65, 1), 2)
 
   def computeCpuScore(self, host):
     host['avg_cpu'] = host['avg_cpu'] + dispatcher.getEstimation(host['host'], 'cpu') / len(host['cpu'])
     host['potential'] = self.estimatePotential(host['avg_cpu'])
-    host['cpu_score'] = sum(float(x['cpu_percent'] + host['potential']) / len(host['cpu']) for x in host['workers'])
+    host['cpu_score'] = sum(float(x['cpu_percent'] * host['potential']) / len(host['cpu']) for x in host['workers'])
     nonSeepCpu = host['avg_cpu'] - sum(float(x['cpu_percent']) / len(host['cpu']) for x in host['workers'])
     host['cpu_score'] += int(0 if nonSeepCpu < 10 else host['potential'] * nonSeepCpu)
 
   def computeIoScore(self, host):
-    totalIo = (sum(host['disk_io']) + sum(host['net_io'])) / 2.0
+    totalIo = max((sum(host['disk_io']) + sum(host['net_io'])) / 2.0, sum(map(lambda w: sum(w['disk_io']) + sum(w['net_io']) / 2.0, host['workers'])))
     host['io_percent'] = max(100, int(100 * sum(host['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + 100 * sum(host['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2)
     host['io_percent'] = host['io_percent'] + dispatcher.getEstimation(host['host'], 'io')
     host['io_potential'] = self.estimatePotential(host['io_percent'])
     for worker in host['workers']:
       worker['io_percent'] = int((((sum(worker['disk_io']) + sum(worker['net_io'])) / 2.0) / totalIo) * 100.0)
-    host['io_score'] = sum(float(x['io_percent'] + host['io_potential']) for x in host['workers'])
+    host['io_score'] = sum(float(x['io_percent'] * host['io_potential']) for x in host['workers'])
     nonSeepIo = host['io_percent'] - sum(float(x['io_percent']) for x in host['workers'])
     host['io_score'] += int(0 if nonSeepIo < 10 else host['potential'] * nonSeepIo)
 
@@ -298,12 +299,13 @@ class Scheduler(object):
 
   def run(self):
     while self.working:
+      startTime = time.time()
       self.getResourceReport()
       self.report = (self.updates[-1] if len(self.updates) else {})
       if config.getint('Scheduler', 'runtime.scheduling.enabled'):
         self.schedule()
       self.updates = []
-      self.sleep(config.getint('Scheduler', 'scheduling.interval'))
+      self.sleep(max(0, config.getint('Scheduler', 'scheduling.interval') - (time.time() - startTime)))
 
   def allocate(self):
     if not self.lastReport or len(self.lastReport) == 0:
@@ -375,7 +377,7 @@ if __name__ == "__main__":
   t = threading.Thread(target=dispatcher.run)
   t.deamon = True
   t.start()
-  stat = stats.StatsComputer(gethostname() + ':' + str(config.getint('Basic', 'server.port')))
+  stat = stats.StatsComputer(log, gethostname() + ':' + str(config.getint('Basic', 'server.port')))
   t = threading.Thread(target=stat.run)
   t.deamon = True
   t.start()
