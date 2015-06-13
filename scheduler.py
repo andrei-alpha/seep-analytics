@@ -55,7 +55,7 @@ class RequestDispatcher(object):
   def send(self, request):
     if request['master.scheduler.port'] in self.lastSentPerHost:
       timeDelta = int(time.time() - self.lastSentPerHost[request['master.scheduler.port']])
-      if timeDelta < config.getint('Scheduler', 'scheduling.appmaster.interval'):
+      if timeDelta < config.getfloat('Scheduler', 'scheduling.appmaster.interval'):
         log.info("Postpone Request to AppMaster", request['master.scheduler.port'], 'last was sent', timeDelta, 'seconds ago.')
         self.postponedRequests.put(request)
         return
@@ -82,7 +82,7 @@ class RequestDispatcher(object):
       return
     if request['id'] in self.lastReceivedPerId:
       timeDelta = int(time.time() - self.lastReceivedPerId[request['id']])
-      if timeDelta < config.getint('Scheduler', 'scheduling.operator.interval'):
+      if timeDelta < config.getfloat('Scheduler', 'scheduling.operator.interval'):
         return
     self.lastReceivedPerId[request['id']] = time.time()
     self.requests.put(request)
@@ -174,7 +174,7 @@ class Scheduler(object):
 
   def computeIoScore(self, host):
     totalIo = max((sum(host['disk_io']) + sum(host['net_io'])) / 2.0, sum(map(lambda w: sum(w['disk_io']) + sum(w['net_io']) / 2.0, host['workers'])))
-    host['io_percent'] = max(100, int(100 * sum(host['disk_io']) / config.getint('Scheduler', 'max.disk.io.host') + 100 * sum(host['net_io']) / config.getint('Scheduler', 'max.net.io.host')) / 2)
+    host['io_percent'] = max(100, int(100 * sum(host['disk_io']) / config.getfloat('Scheduler', 'max.disk.io.host') + 100 * sum(host['net_io']) / config.getfloat('Scheduler', 'max.net.io.host')) / 2)
     host['io_percent'] = host['io_percent'] + dispatcher.getEstimation(host['host'], 'io')
     host['io_potential'] = self.estimatePotential(host['io_percent'])
     for worker in host['workers']:
@@ -191,7 +191,7 @@ class Scheduler(object):
       resourceReport += '%s avg_cpu: %d cpu_score: %d op: %s\n' % (host['host'], host['avg_cpu'], host['cpu_score'], str(map(lambda x: {x['data.port']: x['cpu_percent']}, host['workers'])))
 
       # cpu score represent actual plus extra estimation utilization
-      if not len(host['workers']) or host['cpu_score'] < config.getint('Scheduler', 'migration.from.score'):
+      if not len(host['workers']) or host['cpu_score'] < config.getfloat('Scheduler', 'migration.from.score'):
         continue
       worker = max(host['workers'], key=lambda x: x['cpu_percent'])
       worker['cpu_score'] = int(worker['cpu_percent'] * host['potential'])
@@ -214,7 +214,7 @@ class Scheduler(object):
       resourceReport += '%s disk_io: %s net_io %s io_percent: %d io_score: %d op: %s\n' % (host['host'], str(host['disk_io']), str(host['net_io']), host['io_percent'], host['io_score'], str(map(lambda x: {x['data.port']: x['io_percent']}, host['workers'])))
 
       # cpu score represent actual plus extra estimation utilization
-      if not len(host['workers']) or host['io_score'] < config.getint('Scheduler', 'migration.from.score'):
+      if not len(host['workers']) or host['io_score'] < config.getfloat('Scheduler', 'migration.from.score'):
         continue
       worker = max(host['workers'], key=lambda x: x['io_percent'])
       worker['io_score'] = int(worker['io_percent'] * host['io_potential'])
@@ -240,7 +240,7 @@ class Scheduler(object):
 
     log.debug('CPU selection', worker['data.port'] + ':' + str(worker['cpu_percent']), worker['cpu_score'], worker['source'], '>', host['host'])
     log.info('src.cpu.score:', worker['source_cpu_score'], 'dest.cpu.score:', newCpuScoreDest, 'new.potential:', newPotential, 'non.seep.cpu:', nonSeepCpu, 'op:', [x['data.port'] for x in newWorkers])
-    return worker['source_cpu_score'] - newCpuScoreDest > config.getint('Scheduler', 'min.movment.score.difference')
+    return worker['source_cpu_score'] - newCpuScoreDest > config.getfloat('Scheduler', 'min.movment.score.difference')
 
   def isIoMigrationRequired(self, host, worker):
     # Calculate the effect of moving this job and see if it's worth it
@@ -253,7 +253,7 @@ class Scheduler(object):
 
     log.debug('IO selection', worker['data.port'] + ':' + str(worker['io_percent']), worker['io_score'], worker['source'], '>', host['host'])
     log.info('src.io.score:', worker['source_io_score'], 'dest.io.score:', newIoScoreDest, 'new.potential:', newPotential, 'op:', [x['data.port'] for x in newWorkers])
-    return worker['source_io_score'] - newIoScoreDest > config.getint('Scheduler', 'min.movment.score.difference')
+    return worker['source_io_score'] - newIoScoreDest > config.getfloat('Scheduler', 'min.movment.score.difference')
 
   def migrationRequest(self, host, worker):
     return {'id': worker['data.port'],
@@ -281,7 +281,7 @@ class Scheduler(object):
     hosts = sorted(hosts, key=lambda x: x['cpu_score'])
     cpuWorkersToMove = sorted(cpuWorkersToMove, key=lambda x: x['cpu_score'], reverse=True)
     for host in hosts:
-      if host['cpu_score'] > config.getint('Scheduler', 'migration.to.score'):
+      if host['cpu_score'] > config.getfloat('Scheduler', 'migration.to.score'):
         break
       while len(cpuWorkersToMove):
         worker = cpuWorkersToMove.pop()
@@ -294,7 +294,7 @@ class Scheduler(object):
     hosts = sorted(hosts, key=lambda x: x['io_score'])
     ioWorkersToMove = sorted(ioWorkersToMove, key=lambda x: x['io_score'], reverse=True)
     for host in hosts:
-      if host['io_score'] > config.getint('Scheduler', 'migration.to.score'):
+      if host['io_score'] > config.getfloat('Scheduler', 'migration.to.score'):
         break
       while len(ioWorkersToMove):
         worker = ioWorkersToMove.pop()
@@ -312,7 +312,7 @@ class Scheduler(object):
       if config.getint('Scheduler', 'runtime.scheduling.enabled'):
         self.schedule()
       self.updates = []
-      self.sleep(max(0, config.getint('Scheduler', 'scheduling.interval') - (time.time() - startTime)))
+      self.sleep(max(0, config.getfloat('Scheduler', 'scheduling.interval') - (time.time() - startTime)))
 
   def allocate(self):
     if not self.lastReport or len(self.lastReport) == 0:

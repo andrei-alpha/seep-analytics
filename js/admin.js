@@ -1,3 +1,4 @@
+schedulerConfigs = {}
 
 function getProgress(count) {
   if (count > 50)
@@ -407,6 +408,23 @@ function getAvailableOptions() {
   });
 }
 
+function submitSchedulerConfigs() {
+  var update = false;
+  for (key in schedulerConfigs) {
+    keyName = key.replace(/\./g, "-")
+    var newVal = $('#input-' + keyName).val()
+    if (newVal != schedulerConfigs[key]) {
+      setConfig('Scheduler', key, newVal);
+      schedulerConfigs[key] = newVal;
+      update = true;
+    }
+  }
+
+  if (update) {
+    location.reload();
+  }
+}
+
 function getSchedulerConfigs() {
   $.ajax({
     dataType: "json",
@@ -428,10 +446,14 @@ function getSchedulerConfigs() {
         } else if (key == 'startup.scheduling.type') {
           $('#startup-scheduler-type').val(response['Scheduler'][key])
         } else {
-          html = '<li> <h5>' + prettyKey + '</h5>' + '<input id="input-' + key + '" value="' + response['Scheduler'][key] + '"></input> </li>'
+          schedulerConfigs[key] = response['Scheduler'][key];
+          keyName = key.replace(/\./g, "-")
+          html = '<li> <h5>' + prettyKey + '</h5>' + '<input type="number" id="input-' + keyName + '" value="' + response['Scheduler'][key] + '"></input> </li>'
           $('#scheduler-options .input-grid').append(html)
         }
       }
+      submitHtml = '<button type="button" id="config-submit" class="btn btn-info" onclick="submitSchedulerConfigs()">Submit</button>'
+      $('#scheduler-options .input-grid').append(submitHtml)
     }
   });
 }

@@ -426,8 +426,8 @@ def server_set_config():
   section = request.forms.get('section')
   name = request.forms.get('name')
   value = request.forms.get('value')
-  if section == 'Scheduler':
-    config.set(section, name, value)
+  if section == 'Scheduler' and value and name:
+    config.set(section, name, str(value))
     t = threading.Thread(target=updateSchedulerConfig, args=(name, value))
     t.deamon = True
     t.start()

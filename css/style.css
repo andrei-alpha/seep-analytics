@@ -82,3 +82,10 @@ input {
     float: left;
     width: 25%;
 }
+
+#config-submit {
+	width: 100px;
+	height: 30px;
+	margin-left: 375px;
+	margin-top: 32px;
+}
