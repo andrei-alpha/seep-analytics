@@ -154,16 +154,16 @@ class Scheduler(object):
     except requests.ConnectionError:
       log.warn("Failed to get resource report!")
 
-  def expPDF(x, y):
+  def expPDF(self, x, y):
     return math.pow(y * math.e, y * x)
 
   def estimatePotential(self, percentage):
     y = config.getfloat('Scheduler', 'potential.lambda')
     z = config.getfloat('Scheduler', 'potential.max')
-    maxp = expPDF(1, y)
+    maxp = self.expPDF(1, y)
     x = float(percentage) / 100.0
-    val = expPDF(x, y)
-    return min(1.0, 1 + (z - 1) * ((val - 1) / (maxp - 1)))
+    val = self.expPDF(x, y)
+    return max(1.0, 1 + (z - 1) * ((val - 1) / (maxp - 1)))
 
   def computeCpuScore(self, host):
     host['avg_cpu'] = host['avg_cpu'] + dispatcher.getEstimation(host['host'], 'cpu') / len(host['cpu'])
