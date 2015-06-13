@@ -178,7 +178,8 @@ class Scheduler(object):
     host['io_percent'] = host['io_percent'] + dispatcher.getEstimation(host['host'], 'io')
     host['io_potential'] = self.estimatePotential(host['io_percent'])
     for worker in host['workers']:
-      worker['io_percent'] = int((((sum(worker['disk_io']) + sum(worker['net_io'])) / 2.0) / totalIo) * 100.0)
+      if totalIo > 0: # Weird bug 
+        worker['io_percent'] = int((((sum(worker['disk_io']) + sum(worker['net_io'])) / 2.0) / totalIo) * 100.0)
     host['io_score'] = sum(float(x['io_percent'] * host['io_potential']) for x in host['workers'])
     nonSeepIo = host['io_percent'] - sum(float(x['io_percent']) for x in host['workers'])
     host['io_score'] += int(0 if nonSeepIo < 10 else host['potential'] * nonSeepIo)
