@@ -174,11 +174,15 @@ class Scheduler(object):
 
   def computeIoScore(self, host):
     totalIo = max((sum(host['disk_io']) + sum(host['net_io'])) / 2.0, sum(map(lambda w: sum(w['disk_io']) + sum(w['net_io']) / 2.0, host['workers'])))
+    if totalIo == 0:
+      for worker in host['workers']:
+        worker['io_percent'] = 0
+      return
+
     host['io_percent'] = max(100, int(100 * sum(host['disk_io']) / config.getfloat('Scheduler', 'max.disk.io.host') + 100 * sum(host['net_io']) / config.getfloat('Scheduler', 'max.net.io.host')) / 2)
     host['io_percent'] = host['io_percent'] + dispatcher.getEstimation(host['host'], 'io')
     host['io_potential'] = self.estimatePotential(host['io_percent'])
     for worker in host['workers']:
-      if totalIo > 0: # Weird bug 
         worker['io_percent'] = int((((sum(worker['disk_io']) + sum(worker['net_io'])) / 2.0) / totalIo) * 100.0)
     host['io_score'] = sum(float(x['io_percent'] * host['io_potential']) for x in host['workers'])
     nonSeepIo = host['io_percent'] - sum(float(x['io_percent']) for x in host['workers'])
