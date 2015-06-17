@@ -1,4 +1,6 @@
+import sys
 import time
+import util
 import Queue
 import socket
 
@@ -45,7 +47,7 @@ class Dispatcher(object):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
       s.connect((request['master.ip'], int(request['master.scheduler.port'])))
-      s.sendall('migrate,' + request['id'] + ',' + externalIp(request['destination']))
+      s.sendall('migrate,' + request['id'] + ',' + util.externalIp(self.config, request['destination']))
       self.setEstimation(request['source'], request['destination'], request['cpu'], request['io'])
       self.log.info('Dispached', self.printRequest(request))
       request['time'] = time.time()

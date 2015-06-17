@@ -1,6 +1,8 @@
+import os
 import time
 import math
 import json
+import util
 import requests
 
 from socket import gethostname
@@ -220,4 +222,4 @@ class Scheduler(object):
     # Assume we will allocate a container already
     self.allocations[node] = self.allocations.get(node, 0) + 1
     self.log.info('Allocate on node: ', preferredNodes[0])
-    return externalIp(node)
+    return util.externalIp(self.config, node)

@@ -40,6 +40,7 @@ class Metrics(object):
           batch = data[:500000]
           data = data[len(batch):]
           payload = {'event': 'new line', 'path': path[len(self.prefix):], 'data': batch}
+          util.send(self, payload)
 
       self.index[path] = size
 

@@ -6,14 +6,11 @@ import requests
 import threading
 import configparser
 
-from scheduler import dispatcher, scheduling
+from scheduler import util, dispatcher, scheduling
 from socket import gethostname
 from bottle import Bottle, request
 
 app = Bottle()
-
-def externalIp(host):
-  return host + config.get('Basic', 'external.ip')
 
 def computeBusyScore(data):
   return data['avg_cpu']
@@ -21,7 +18,7 @@ def computeBusyScore(data):
 @app.route('/scheduler/host')
 def scheduler_host():
   if config.getint('Scheduler', 'startup.scheduling.type') == 0:
-    return externalIp('wombat01' if 'wombat' in os.uname()[1] else os.uname()[1] )
+    return util.externalIp(config, 'wombat01' if 'wombat' in os.uname()[1] else os.uname()[1] )
   elif config.getint('Scheduler', 'startup.scheduling.type') == 1:
     return None
   else:
