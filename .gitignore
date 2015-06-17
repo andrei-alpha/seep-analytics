@@ -1,6 +1,13 @@
 # Hosts file
 hosts
 
+# Results and benchmarks folder
+results
+benchmarks
+
+# Test file
+test*.py
+
 # Properties file
 analytics.properties
 
