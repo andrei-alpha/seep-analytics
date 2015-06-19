@@ -1,3 +1,4 @@
+import re
 import os
 import configparser
 import json
@@ -10,7 +11,7 @@ import requests
 import time
 import threading
 
-from monitor import resources, metrics
+from monitor import util, resources, metrics
 from socket import gethostname
 from bottle import Bottle, response, request
 
@@ -35,11 +36,11 @@ def startResourceThread(host, seep_root):
 
 def stopAppMaster(scheduler_port):
   try:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((gethostname(), int(scheduler_port)))
-    s.sendall('stop')
-    s.sendall('exit')
-    s.close()
+    for command in ['stop', 'exit']:
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      s.connect((gethostname(), int(scheduler_port)))
+      s.sendall(command)
+      s.close()
   except:
     log.error('Failed to stopgracefully stop master')
 
