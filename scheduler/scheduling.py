@@ -63,6 +63,9 @@ class Scheduler(object):
   def computeIoScore(self, host):
     totalIo = max((sum(host['disk_io']) + sum(host['net_io'])) / 2.0, sum(map(lambda w: sum(w['disk_io']) + sum(w['net_io']) / 2.0, host['workers'])))
     if totalIo == 0:
+      host['io_percent'] = 0
+      host['io_potential'] = 0
+      host['io_score'] = 0
       for worker in host['workers']:
         worker['io_percent'] = 0
       return
