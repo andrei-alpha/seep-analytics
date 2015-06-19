@@ -3,6 +3,8 @@ import configparser
 import json
 import logger
 import select
+import psutil
+import socket
 import subprocess
 import requests
 import time
@@ -31,6 +33,43 @@ def startResourceThread(host, seep_root):
   t.deamon = True
   t.start()
 
+def stopAppMaster(scheduler_port):
+  try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((gethostname(), int(scheduler_port)))
+    s.sendall('stop')
+    s.sendall('exit')
+    s.close()
+  except:
+    log.error('Failed to stopgracefully stop master')
+
+def stopAppMasters():
+  pids = []
+  jvmOutput = subprocess.check_output(['jps', '-m']).split('\n')
+  for proc in psutil.process_iter():
+    try:
+      if proc.name() == 'java':
+        pids.append(proc.pid)
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+      pass
+  for pid in pids:
+    try:
+      proc = psutil.Process(pid)
+      pinfo = proc.as_dict(attrs=['cmdline'])
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+      pass
+    else:
+      cmdline = pinfo['cmdline']
+      if not cmdline or len(cmdline) == 0:
+        continue
+      if sum([len(re.findall('seep-master', x)) for x in cmdline]) < 20:
+        continue
+      cmdline =  util.getJVMArgs(jvmOutput, pid)
+      for i in xrange(len(cmdline)):
+        if cmdline[i] == '--master.scheduler.port':
+          stopAppMaster(cmdline[i+1])
+          break
+
 @app.route('/command', method='post')
 def server_command():
   command = request.forms.get('command').split(' ')
@@ -43,6 +82,11 @@ def server_command():
     args = globalResourceThread.args()
     globalResourceThread.stop()
     startResourceThread(args[0], args[1])
+  elif command == ['stop-all']:
+    log.info('stop queries gracefully')
+    t = threading.Thread(target=stopAppMasters)
+    t.deamon = True
+    t.start()
   else:
     global globalProcess
     log.info('run', command)
@@ -65,9 +109,7 @@ def server_status():
 
 # Main entry point
 if __name__ == '__main__':
-  #usage = 'We want as arguments: 1) host 2) port 3) absolute path to userlogs directory 4) absolute path to SEEPng directory'
-  #  print usage
-  #  exit(0)
+  # usage = 'We want as arguments: 1) host 2) port 3) absolute path to userlogs directory 4) absolute path to SEEPng directory'
   log = logger.Logger('Monitor')
   config = configparser.SafeConfigParser()
   config.read('analytics.properties')

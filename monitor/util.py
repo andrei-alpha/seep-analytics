@@ -1,3 +1,4 @@
+import re
 import requests
 
 # This function will be called from Metrics or Resources class
@@ -12,3 +13,9 @@ def send(self, payload):
       self.log.debug('Connection problems. Retrying in', pause, ' sec..')
       self.sleep(pause)
       pause = min(60, pause * 2)
+
+def getJVMArgs(out, pid):
+  args = filter(lambda x: re.search('^' + str(pid) + '\s', x), out)
+  if len(args):
+    return args[0].split(' ')
+  return ''

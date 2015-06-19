@@ -138,6 +138,8 @@ def killAllSeepQueries():
         sendCommand(host, 'jps')
         res = getStatus(host, True)
         total += len(re.findall('(?<=\s)Main(?=\n)', res))
+        sendCommand(host, 'stop-all')
+    time.sleep(0.5)
 
     running = total
     count = 3

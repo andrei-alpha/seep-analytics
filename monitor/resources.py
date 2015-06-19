@@ -21,12 +21,6 @@ class Resources(object):
   def args(self):
     return (self.host, self.seep_root)
 
-  def getJVMArgs(self, out, pid):
-    args = filter(lambda x: re.search('^' + str(pid) + '\s', x), out)
-    if len(args):
-      return args[0].split(' ')
-    return ''
-
   def getDiskIo(self, proc, div):
     res = [0, 0]
     if hasattr(proc, 'get_io_counters'):
@@ -83,7 +77,7 @@ class Resources(object):
     for proc in self.procs:
       try:
         pinfo = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent'])
-        cmdline = self.getJVMArgs(jvmOutput, pinfo['pid'])
+        cmdline = util.getJVMArgs(jvmOutput, pinfo['pid'])
         scanInterval = self.config.getint('monitor.resources.scan.interval')
         pinfo['disk_io'] = self.getDiskIo(proc, scanInterval)
         pinfo['net_io'] = self.getNetIo(proc, scanInterval)

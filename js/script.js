@@ -41,7 +41,10 @@ function dataSelect(title, labels, dataset) {
     }
     previousTimestamp = labels[i];
   }
-  for (var i = Math.max(start, dataset.length - MaxItems * filter); i < dataset.length; i += filter) {
+  var error_range = 0;
+  if (dataset.length > 1)
+    error_range = 1;
+  for (var i = Math.max(start, dataset.length - MaxItems * filter); i < dataset.length - error_range; i += filter) {
     var sum = 0;
     for (var j = 0; j < filter && i + j < dataset.length; ++j)
       sum += dataset[i + j];
