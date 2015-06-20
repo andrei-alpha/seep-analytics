@@ -1,4 +1,5 @@
 import re
+import psutil
 import requests
 
 # This function will be called from Metrics or Resources class
@@ -19,3 +20,13 @@ def getJVMArgs(out, pid):
   if len(args):
     return args[0].split(' ')
   return ''
+
+
+def killAll(proc_pid):
+  try:
+    process = psutil.Process(proc_pid)
+    for proc in process.get_children(recursive=True):
+      proc.kill()
+    process.kill()
+  except:
+    pass

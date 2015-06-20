@@ -90,6 +90,9 @@ def server_command():
     t.start()
   else:
     global globalProcess
+    # If the process is still runnning
+    if globalProcess and globalProcess.poll() > 0:
+      util.killAll(globalProcess.pid)
     log.info('run', command)
     globalProcess = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -98,10 +101,10 @@ def server_status():
   global globalProcess
   if not globalProcess:
     return None
-  if globalProcess.poll():
+  if globalProcess.poll() > 0:
     retVal = ''
     while (select.select([globalProcess.stdout],[],[],0)[0]!=[]):
-      retVal+=globalProcess.stdout.read(1)
+      retVal += globalProcess.stdout.read(1)
     return (retVal if len(retVal) else 'pending')
   else:
     out = globalProcess.communicate()[0]
