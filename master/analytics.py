@@ -155,7 +155,7 @@ def getQueryFileName(data):
     return re.search('[a-zA-z-_]+\.jar', match.group()).group()
   return None
 
-def update(appId, contId, data):
+def update(appId, contId, data, log):
   if not appId in dataset['apps']:
     dataset['apps'][appId] = {}
     dataset['apps'][appId]['data'] = []

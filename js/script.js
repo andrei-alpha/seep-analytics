@@ -271,15 +271,23 @@ $(function() {
   getClusterInfo(true);
   getSchedulerConfigs();
 
-  $('#startup-scheduler-type').change(function() {
-    var name = 'startup.scheduling.type';
-    var value = $("#startup-scheduler-type option:selected").val();
-    setConfig('Scheduler', name, value);
-  })
-  $('#runtime-scheduler').change(function() {
-    var name = 'runtime.scheduling.enabled';
-    var value = $("#runtime-scheduler option:selected").val();
-    setConfig('Scheduler', name, value);
+  $('#scheduler-type').change(function() {
+    var name1 = 'startup.scheduling.type';
+    var name2 = 'runtime.scheduling.enabled';
+    var value = $("#scheduler-type option:selected").val();
+    if (value == "0") {
+      setConfig('Scheduler', name1, 0);
+      setConfig('Scheduler', name2, 0);
+    } else if (value == "1") {
+      setConfig('Scheduler', name1, 1);
+      setConfig('Scheduler', name2, 0);
+    } else if (value == "2") {
+      setConfig('Scheduler', name1, 2);
+      setConfig('Scheduler', name2, 0);
+    } else if (value == "3") {
+      setConfig('Scheduler', name1, 2);
+      setConfig('Scheduler', name2, 1);
+    }
   })
 })
 

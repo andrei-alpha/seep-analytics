@@ -144,7 +144,7 @@ def event():
 
     with open(path[1:], "a") as fout:
       fout.write(data)
-    analytics.update(appId, containerId, data)
+    analytics.update(appId, containerId, data, log)
 
   if event == 'resource report':
     data = json.loads(data)

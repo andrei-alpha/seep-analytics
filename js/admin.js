@@ -431,6 +431,7 @@ function getSchedulerConfigs() {
     url: "/command/get_config",
     type: "get",
     success: function(response) {
+      var idx1 = 0, idx2 = 0;
       for (key in response['Scheduler']) {
         var x = key.replace(/\./g, " "), prettyKey = "";
         for (var i = 0; i < x.length; ++i) {
@@ -442,15 +443,25 @@ function getSchedulerConfigs() {
         }
 
         if (key == 'runtime.scheduling.enabled') {
-          $('#runtime-scheduler').val(response['Scheduler'][key])
+          idx2 = response['Scheduler'][key];
         } else if (key == 'startup.scheduling.type') {
-          $('#startup-scheduler-type').val(response['Scheduler'][key])
+          idx1 = response['Scheduler'][key];
         } else {
           schedulerConfigs[key] = response['Scheduler'][key];
           keyName = key.replace(/\./g, "-")
           html = '<li> <h5>' + prettyKey + '</h5>' + '<input type="number" id="input-' + keyName + '" value="' + response['Scheduler'][key] + '"></input> </li>'
           $('#scheduler-options .input-grid').append(html)
         }
+      }
+      console.log(idx1, idx2);
+      if (idx1 == 0 && idx2 == 0) {
+        $('#scheduler-type').val(0);
+      } else if(idx1 == 1 && idx2 == 0) {
+        $('#scheduler-type').val(1);
+      } else if(idx1 == 2 && idx2 == 0) {
+        $('#scheduler-type').val(2);
+      } else {
+        $('#scheduler-type').val(3);
       }
       submitHtml = '<button type="button" id="config-submit" class="btn btn-info" onclick="submitSchedulerConfigs()">Submit</button>'
       $('#scheduler-options .input-grid').append(submitHtml)

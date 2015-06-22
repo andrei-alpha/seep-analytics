@@ -65,17 +65,18 @@
         <div role="tabpanel" class="tab-pane" id="scheduler-tab">
           <div id="scheduler-options">
             <ul class="input-grid">
-              <li> <h5>Startup Scheduler Type</h5>
-              <select id="startup-scheduler-type" class="selectpicker">
+              <li> <h5>Scheduler Type</h5>
+              <select id="scheduler-type" class="selectpicker">
                 <option value="0">Disabled, fixed node</option>
-                <option value="1">YARN default placement</option>
-                <option value="2">Scheduler placement</option> 
+                <option value="1">YARN's Fair Scheduler</option>
+                <option value="2">Resource aware placement</option> 
+                <option value="3">Runtime scheduling</option> 
               </select> </li>
-              <li> <h5>Runtime Scheduler</h5>
+              <!-- <li> <h5>Runtime Scheduler</h5>
               <select id="runtime-scheduler" class="selectpicker">
                 <option value="0">Disabled</option>
                 <option value="1">Enabled</option>
-              </select> </li>
+              </select> </li> -->
             </ul>
           </div>
         </div>
