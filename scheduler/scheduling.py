@@ -3,6 +3,7 @@ import time
 import math
 import json
 import util
+import heapq
 import requests
 
 from socket import gethostname
@@ -17,6 +18,7 @@ class Scheduler(object):
     self.allocations = {}
     self.lastReport = None
     self.working = True
+    self.K = 4
 
   def sleep(self, seconds):
     while self.working and seconds > 0:
@@ -88,16 +90,17 @@ class Scheduler(object):
       # cpu score represent actual plus extra estimation utilization
       if not len(host['workers']) or host['cpu_score'] < self.config.getfloat('Scheduler', 'migration.from.score'):
         continue
-      worker = max(host['workers'], key=lambda x: x['cpu_percent'])
-      worker['cpu_score'] = int(worker['cpu_percent'] * host['potential'])
-      if worker['cpu_score'] < 50:
-        continue
+      selection = heapq.nlargest(self.K, host['workers'], key=lambda x: x['cpu_percent'])
+      for worker in selection:
+        worker['cpu_score'] = int(worker['cpu_percent'] * host['potential'])
+        if worker['cpu_score'] < 50:
+          continue
 
-      worker['source_cpu_score'] = host['cpu_score']
-      worker['source_cpu_len'] = len(host['cpu'])
-      worker['source'] = host['host']
-      workers.append(worker)
-      hasSelected = True
+        worker['source_cpu_score'] = host['cpu_score']
+        worker['source_cpu_len'] = len(host['cpu'])
+        worker['source'] = host['host']
+        workers.append(worker)
+        hasSelected = True
 
     if hasSelected:
       self.log.info(resourceReport)
@@ -111,15 +114,16 @@ class Scheduler(object):
       # cpu score represent actual plus extra estimation utilization
       if not len(host['workers']) or host['io_score'] < self.config.getfloat('Scheduler', 'migration.from.score'):
         continue
-      worker = max(host['workers'], key=lambda x: x['io_percent'])
-      worker['io_score'] = int(worker['io_percent'] * host['io_potential'])
-      if worker['io_score'] < 50:
-        continue
+      selection = heapq.nlargest(self.K, host['workers'], key=lambda x: x['io_percent'])
+      for worker in selection:
+        worker['io_score'] = int(worker['io_percent'] * host['io_potential'])
+        if worker['io_score'] < 50:
+          continue
 
-      worker['source_io_score'] = host['io_score']
-      worker['source'] = host['host']
-      workers.append(worker)
-      hasSelected = True
+        worker['source_io_score'] = host['io_score']
+        worker['source'] = host['host']
+        workers.append(worker)
+        hasSelected = True
 
     if hasSelected:
       self.log.info(resourceReport)
@@ -168,6 +172,7 @@ class Scheduler(object):
       self.computeIoScore(host)
       hosts.append(host)
 
+    taken = set()
     cpuWorkersToMove = []
     self.selectCpuIntensiveWorkers(hosts, cpuWorkersToMove)
     ioWorkersToMove = []
@@ -182,6 +187,9 @@ class Scheduler(object):
         worker = cpuWorkersToMove.pop()
         if not self.isCpuMigrationRequired(host, worker):
           continue
+        if worker['source'] in taken:
+          continue
+        taken.add(worker['source'])
         request = self.migrationRequest(host, worker)
         self.dispatcher.add(request, 'CPU')
         break
@@ -195,6 +203,9 @@ class Scheduler(object):
         worker = ioWorkersToMove.pop()
         if not self.isIoMigrationRequired(host, worker):
           continue
+        if worker['source'] in taken:
+          continue
+        taken.add(worker['source'])
         request = self.migrationRequest(host, worker)
         self.dispatcher.add(request, 'IO')
         break
